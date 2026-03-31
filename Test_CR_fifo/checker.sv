@@ -7,7 +7,7 @@ class checker_c #(parameter width=16, parameter depth =8);
   trans_fifo #(.width(width)) auxiliar; //transacción usada como auxiliar para leer el fifo emulado 
   trans_sb   #(.width(width)) to_sb; // transacción usada para comunicarse con el scoreboard
   trans_fifo  emul_fifo[$]; //this queue is going to be used as golden reference for the fifo
-  trans_fifo_mbx mon_chkr_mbx; // Este mailbox es el que comunica con el driver/monitor
+  trans_fifo_mbx drv_chkr_mbx; // Este mailbox es el que comunica con el driver/monitor
   trans_sb_mbx  chkr_sb_mbx; // Este mailbox es el que comunica el checker con el scoreboard
   int contador_auxiliar; 
 
@@ -21,8 +21,8 @@ class checker_c #(parameter width=16, parameter depth =8);
    to_sb = new();
    forever begin
      to_sb = new();
-     mon_chkr_mbx.get(transaccion);
-     transaccion.print("Checker: Se recibe trasacción desde el monitor");
+     drv_chkr_mbx.get(transaccion);
+     transaccion.print("Checker: Se recibe trasacción desde el driver");
      to_sb.clean();
      case(transaccion.tipo)
        lectura: begin
@@ -61,9 +61,6 @@ class checker_c #(parameter width=16, parameter depth =8);
            transaccion.print("Checker: Escritura");
            emul_fifo.push_back(transaccion);
          end
-       end
-       lectura/escritura: begin
-        
        end
        reset: begin // en caso de reset vacía la fifo simulada y envía todos los datos perdidos al SB
          contador_auxiliar = emul_fifo.size();
