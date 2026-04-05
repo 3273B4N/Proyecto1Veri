@@ -2,7 +2,7 @@
 // Definición del tipo de transacciones posibles en la fifo //
 //////////////////////////////////////////////////////////////
 
-typedef enum { lectura, escritura, reset} tipo_trans; 
+typedef enum { lectura, escritura, lectura_escritura,  reset} tipo_trans; 
 
 /////////////////////////////////////////////////////////////////////////////////////////
 //Transacción: este objeto representa las transacciones que entran y salen de la fifo. //
@@ -108,8 +108,22 @@ typedef enum {retardo_promedio,reporte} solicitud_sb;
 /////////////////////////////////////////////////////////////////////////
 // Definición de estructura para generar comandos hacia el agente      //
 /////////////////////////////////////////////////////////////////////////
-typedef enum {GEN_ALEATORIO, LLENADO_INTERCALADO, RESET_RANDOM_FULL,RESET_RANDOM_EMPTY,RESET_RANDOM_HALF, OVERFLOW, UNDERFLOW, POP_PUSH} tipo_prueba_t;
-//typedef enum {llenado_aleatorio,trans_aleatoria,trans_especifica,sec_trans_aleatorias} instrucciones_agente;
+typedef enum {
+  llenado_aleatorio,
+  trans_aleatoria,
+  trans_especifica,
+  sec_trans_aleatorias,
+  trans_lectura_escritura,
+  trans_pattern_0_5_A_F,
+  trans_overflow,
+  trans_underflow,
+  trans_poppush_bajo,
+  trans_poppush_medio,
+  trans_poppush_alto,
+  reset_full_aleatorio,
+  reset_empty_aleatorio,
+  reset_half_aleatorio
+} instrucciones_agente;
 
 ///////////////////////////////////////////////////////////////////////////////////////
 // Definicion de mailboxes de tipo definido trans_fifo para comunicar las interfaces //

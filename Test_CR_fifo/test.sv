@@ -3,8 +3,8 @@
 // Módulo para correr la prueba  //
 ///////////////////////////////////
 class test #(parameter width = 16, parameter depth =8); 
-  // el test no debe conocer la estructura interna del ambiente, asi que se cortara comunicacion en el scoreboard
-  //comando_test_sb_mbx    test_sb_mbx;
+  
+  comando_test_sb_mbx    test_sb_mbx;
   comando_test_agent_mbx test_agent_mbx;
 
   parameter num_transacciones = depth;
@@ -36,6 +36,11 @@ class test #(parameter width = 16, parameter depth =8);
 
   task run;
     $display("[%g]  El Test fue inicializado",$time);
+    // Reaplica conexiones porque _if se asigna después de construir t0 desde el testbench.
+    ambiente_inst._if = _if;
+    ambiente_inst.driver_inst.vif = _if;
+    ambiente_inst.monitor_inst.vif = _if;
+
     fork
       ambiente_inst.run();
     join_none

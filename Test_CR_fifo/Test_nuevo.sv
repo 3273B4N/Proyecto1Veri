@@ -1,280 +1,317 @@
-///////////////////////////////////
-// Módulo para correr la prueba  //
-///////////////////////////////////
-//Tipos de pruebas que hay 
-typedef enum {GEN_ALEATORIO, LLENADO_INTERCALADO, RESET_RANDOM_FULL,RESET_RANDOM_EMPTY,RESET_RANDOM_HALF, OVERFLOW, UNDERFLOW, POP_PUSH} tipo_prueba_t;
-// esta clase se usará para enviar instrucciones mediante un solo mailbox al generador
-class instruccion_test;
-    tipo_prueba_t tipo;
-    int num_trans;
-    int ret_max;
-endclass
-typedef enum {llenado_aleatorio,trans_aleatoria,trans_especifica,sec_trans_aleatorias} instrucciones_agente;
+///////////////////////////////////////////////////////////////////////////////
+// TEST_NUEVO
+// aqui yo junto varios tests de la FIFO usando herencia.
+// la idea es correr casos puntuales sin estar tocando todo el bench.
+//
+// plusargs que yo puedo usar:
+//   +TEST=<nombre>       elijo que test correr desde test_bench.sv
+//   +NUM_TRANS=<N>       fuerzo la cantidad de transacciones
+//   +MAX_RETARDO=<N>     fuerzo el retardo maximo
+///////////////////////////////////////////////////////////////////////////////
 
-class test_base #(parameter width = 16, parameter depth =8); 
- // el test no debe conocer la estructura interna del ambiente, asi que se cortara comunicacion en el scoreboard
- // Definición del ambiente de la prueba
-  ambiente #(.depth(depth),.width(width)) ambiente_inst;
- // Definición de la interface a la que se conectará el DUT
-  virtual fifo_if  #(.width(width)) vif;
-// se ponen aca pq el test decide la escala de la prueba, los demas datos se deben  generar en el generador
-  rand int retardo; // retardo aleatorio entre eventos
-  rand int num_transacciones; // cantidad de transacciones a generar
-//este test base aleatorizará eventos de reset, eventos de lectura y escritura, tiempos de espera entre eventos, datos de entrada, cantidad de eventos, tamaño de profundidad de la fifo y tamaño de palabra, esto con el fin de generar una gran cantidad de escenarios de prueba y así validar el correcto funcionamiento del DUT en diferentes situaciones. del paquete de la fifo
-// posteriormente se haran hijos para probrar casos de esquina 
+class test_base #(parameter width = 16, parameter depth = 8);
 
-  //definción de las condiciones iniciales del test
-  function new(virtual fifo_if  #(.width(width)) _if); 
-    this.vif=_if;
-    ambiente_inst = new(vif); // se deja que el ambiente haga sus propias conexiones, el test no debe saber de conecciones internas
+  ambiente #(.depth(depth), .width(width)) ambiente_inst;
+  virtual fifo_if #(.width(width)) vif;
+
+  // estos mailbox los conecto al ambiente
+  comando_test_sb_mbx    test_sb_mbx;
+  comando_test_agent_mbx test_agent_mbx;
+
+  // estos parametros arrancan random, pero los puedo fijar con plusargs.
+  rand int retardo;
+  rand int num_transacciones;
+
+  constraint retardo_c           { retardo           inside {[1:10]};  }
+  constraint num_transacciones_c { num_transacciones inside {[2:20]};  }
+
+  // constructor base.
+  function new(virtual fifo_if #(.width(width)) _if);
+    this.vif       = _if;
+    test_sb_mbx    = new();
+    test_agent_mbx = new();
+
+    ambiente_inst  = new();
+
+    // aqui paso la interfaz al ambiente y de ahi la agarran driver/monitor.
+    ambiente_inst._if = _if;
+
+    // aqui reemplazo mailboxes internos para mandar comandos directo.
+    ambiente_inst.test_sb_mbx                 = test_sb_mbx;
+    ambiente_inst.scoreboard_inst.test_sb_mbx = test_sb_mbx;
+    ambiente_inst.test_agent_mbx              = test_agent_mbx;
+    ambiente_inst.agent_inst.test_agent_mbx   = test_agent_mbx;
+
+    // valores por defecto para no arrancar en cero.
+    ambiente_inst.agent_inst.num_transacciones     = 10;
+    ambiente_inst.agent_inst.max_retardo           = 4;
+    ambiente_inst.agent_inst.generator_inst = new();
   endfunction
-  // constraints de los parametros 
-  constraint retardo_c {retardo inside {[1:10]};}
-  constraint num_transacciones_c {num_transacciones inside {[10:100]};}
 
+  // si vienen plusargs, se respetan y desactivo el constraint de ese campo.
+  function void aplicar_plusargs();
+    int val;
+    if ($value$plusargs("NUM_TRANS=%d", val)) begin
+      num_transacciones_c.constraint_mode(0); // desactiva constraint
+      num_transacciones = val;
+      $display("[%0t] Plusarg: NUM_TRANS=%0d (constraint desactivado)", $time, val);
+    end
+    if ($value$plusargs("MAX_RETARDO=%d", val)) begin
+      retardo_c.constraint_mode(0);           // desactiva constraint
+      retardo = val;
+      $display("[%0t] Plusarg: MAX_RETARDO=%0d (constraint desactivado)", $time, val);
+    end
+  endfunction
+
+  // aqui corro el ambiente, mando instruccion y al final pido reporte.
+  protected task ejecutar(instrucciones_agente instr_agente);
+    instrucciones_agente ia;
+    solicitud_sb         orden_sb;
+
+    // aqui le paso al agente los parametros finales de este test.
+    ambiente_inst.agent_inst.num_transacciones     = num_transacciones;
+    ambiente_inst.agent_inst.max_retardo           = retardo;
+
+    fork
+      ambiente_inst.run();
+    join_none
+
+    ia = instr_agente;
+    test_agent_mbx.put(ia);
+    $display("[%0t]  %s: instrucción '%s' enviada | num_trans=%0d max_ret=%0d",
+             $time, get_nombre(), ia.name(), num_transacciones, retardo);
+
+    // aqui espero un rato para que termine el trafico.
+    #(num_transacciones * retardo * 10 + 500);
+
+    // aqui pido metricas al scoreboard.
+    orden_sb = retardo_promedio;
+    test_sb_mbx.put(orden_sb);
+    orden_sb = reporte;
+    test_sb_mbx.put(orden_sb);
+    #20;
+    $finish;
+  endtask
+
+  virtual function string get_nombre();
+    return "test_base";
+  endfunction
+
+  // run por defecto: yo corro llenado_aleatorio.
   virtual task run;
-    $display("[%g]  El Test por defecto fue inicializado",$time);
-    // se genera el retardo y numero de transacciones maximo aleatorimente
+    $display("[%0t]  El Test base (llenado_aleatorio) fue inicializado", $time);
     this.randomize();
-    
-    // se pasa la configuracion al ambiente (generador), con la cantidad de transacciones, el retardo maximo y el caso de prueba
-    instruccion_test instr= new();
-    instr.tipo = GEN_ALEATORIO;
-    instr.num_trans = this.num_transacciones;
-    instr.ret_max = this.retardo;
-  
-    // se ejecuta el ambiente
-    fork
-      ambiente_inst.run();
-    join_none
+    aplicar_plusargs();
+    ejecutar(llenado_aleatorio);
+  endtask
 
-      // se envia el paquete de ocnfiguracion mediante un mailbox al generador del ambiente 
-    ambiente_inst.test_gen_mbx.put(instr); // implementar el mailbox en el ambiente y la conexión al generador
-    $display("[%g]  Test por defecto: Enviada la instrucción de prueba al ambiente con %0d transacciones y retardo máximo de %0d",$time, instr.num_trans, instr.ret_max);
-    // Esto se debe ejecutar dentro del ambiente, la prueba espera a que el ambiente termine de ejecutar la prueba solicitada, y termina la prueba
-    wait(ambiente_inst.scoreboard_inst.test_terminado);
-    $finish;
-
-    endtask
+endclass
 
 
- endclass
+// este es un caso simple: una transaccion aleatoria.
+class test_trans_aleatoria #(parameter width = 16, parameter depth = 8)
+  extends test_base #(.width(width), .depth(depth));
 
- class test_intercalado extends test_base; // este test maneja el caso de llenado intercalando 
-  function new(virtual fifo_if  #(.width(width)) _if);
+  function new(virtual fifo_if #(.width(width)) _if);
     super.new(_if);
   endfunction
-    // aca se sobreescribe el run para enviar la instruccion al generador de que se quiere hacer un llenado intercalado
-  virtual  task run;
-    $display("[%g]  El Test de llenado intercalado fue inicializado",$time);
-    // se pasa la configuracion al ambiente (generador), con la cantidad de transacciones, el retardo maximo y el caso de prueba 0s 5s As y Fs
-    instruccion_test instr= new();
-    this.randomize();
-    // aca se mantienen los mismos parametros de retardo y numero de transacciones aleatorios, pero se le indica al generador que se quiere hacer un llenado intercalado, se puede cambiar el retardo y numero de transacciones si se desea
-    instr.tipo = LLENADO_INTERCALADO;
-    instr.num_trans = this.num_transacciones;
-    instr.ret_max=this.retardo;
-    // se ejecuta el ambiente
-    fork
-      ambiente_inst.run();
-    join_none
-        // se envia el paquete de ocnfiguracion mediante un mailbox al generador del ambiente
-    ambiente_inst.test_gen_mbx.put(instr); // implementar el mailbox en el ambiente y la conexión al generador
-    // aca se espera lo mismo que en el test base
-    wait(ambiente_inst.scoreboard_inst.test_terminado);
-    $finish;
+  virtual function string get_nombre(); return "test_trans_aleatoria"; endfunction
+  virtual task run;
+    $display("[%0t]  El Test de transacción aleatoria fue inicializado", $time);
+    this.randomize(); aplicar_plusargs(); ejecutar(trans_aleatoria);
+  endtask
+endclass
 
-    endtask
 
- endclass
+// este es dirigido: transaccion especifica con dato/retardo definidos.
+class test_trans_especifica #(parameter width = 16, parameter depth = 8)
+  extends test_base #(.width(width), .depth(depth));
 
- class test_reset_random_full extends test_base; // este test maneja el caso de eventos de reset aleatorios
-  function new(virtual fifo_if  #(.width(width)) _if);
+  int        ret_spec = 3;
+  tipo_trans tpo_spec = escritura;
+  bit [width-1:0] dto_spec = {(width/4){4'h5}};
+
+  function new(virtual fifo_if #(.width(width)) _if);
     super.new(_if);
   endfunction
-    // aca se sobreescribe el run para enviar la instruccion al generador de que se quiere hacer eventos de reset aleatorios
- virtual task run;
-    $display("[%g]  El Test de reset aleatorio fue inicializado",$time);
-    // se pasa la configuracion al ambiente (generador), con la cantidad de transacciones, el retardo maximo y el caso de prueba 0s 5s As y Fs
-    instruccion_test instr= new();
-    this.randomize();
-    // aca se mantienen los mismos parametros de retardo y numero de transacciones aleatorios, pero se le indica al generador que se quiere hacer eventos de reset aleatorios, se puede cambiar el retardo y numero de transacciones si se desea
-    instr.tipo = RESET_RANDOM_FULL;
-    instr.num_trans=this.num_transacciones;
-    instr.ret_max=this.retardo;
-    // se ejecuta el ambiente
-    fork
-      ambiente_inst.run();
-    join_none
-        // se envia el paquete de ocnfiguracion mediante un mailbox al generador del ambiente   
-    ambiente_inst.test_gen_mbx.put(instr); // implementar el mailbox en el ambiente y la conexión al generador
-    // aca se espera lo mismo que en el test base
-    wait(ambiente_inst.scoreboard_inst.test_terminado);
-    $finish;
-    endtask
+  virtual function string get_nombre(); return "test_trans_especifica"; endfunction
+  virtual task run;
+    $display("[%0t]  El Test de transacción específica fue inicializado", $time);
+    this.randomize(); aplicar_plusargs();
+    ambiente_inst.agent_inst.ret_spec     = ret_spec;
+    ambiente_inst.agent_inst.tpo_spec     = tpo_spec;
+    ambiente_inst.agent_inst.dto_spec     = dto_spec;
+    ejecutar(trans_especifica);
+  endtask
+endclass
 
-    endclass
 
-     class test_reset_random_empty extends test_base; // este test maneja el caso de eventos de reset aleatorios
-  function new(virtual fifo_if  #(.width(width)) _if);
+// aqui pruebo push y pop al mismo tiempo.
+class test_trans_lectura_escritura #(parameter width = 16, parameter depth = 8)
+  extends test_base #(.width(width), .depth(depth));
+
+  function new(virtual fifo_if #(.width(width)) _if);
     super.new(_if);
   endfunction
-    // aca se sobreescribe el run para enviar la instruccion al generador de que se quiere hacer eventos de reset aleatorios
- virtual task run;
-    $display("[%g]  El Test de reset aleatorio fue inicializado",$time);
-    // se pasa la configuracion al ambiente (generador), con la cantidad de transacciones, el retardo maximo y el caso de prueba 0s 5s As y Fs
-    instruccion_test instr= new();
-    this.randomize();
-    // aca se mantienen los mismos parametros de retardo y numero de transacciones aleatorios, pero se le indica al generador que se quiere hacer eventos de reset aleatorios, se puede cambiar el retardo y numero de transacciones si se desea
-    instr.tipo = RESET_RANDOM_EMPTY;
-    instr.num_trans=this.num_transacciones;
-    instr.ret_max=this.retardo;
-    // se ejecuta el ambiente
-    fork
-      ambiente_inst.run();
-    join_none
-        // se envia el paquete de ocnfiguracion mediante un mailbox al generador del ambiente   
-    ambiente_inst.test_gen_mbx.put(instr); // implementar el mailbox en el ambiente y la conexión al generador
-    // aca se espera lo mismo que en el test base
-    wait(ambiente_inst.scoreboard_inst.test_terminado);
-    $finish;
-    endtask
+  virtual function string get_nombre(); return "test_trans_lectura_escritura"; endfunction
+  virtual task run;
+    $display("[%0t]  El Test de lectura/escritura simultánea fue inicializado", $time);
+    this.randomize(); aplicar_plusargs(); ejecutar(trans_lectura_escritura);
+  endtask
+endclass
 
-    endclass
 
-     class test_reset_random_half extends test_base; // este test maneja el caso de eventos de reset aleatorios
-  function new(virtual fifo_if  #(.width(width)) _if);
+// aqui pruebo patron 0/5/A/F para alternancia de datos.
+class test_intercalado #(parameter width = 16, parameter depth = 8)
+  extends test_base #(.width(width), .depth(depth));
+
+  function new(virtual fifo_if #(.width(width)) _if);
     super.new(_if);
   endfunction
-    // aca se sobreescribe el run para enviar la instruccion al generador de que se quiere hacer eventos de reset aleatorios
- virtual task run;
-    $display("[%g]  El Test de reset aleatorio fue inicializado",$time);
-    // se pasa la configuracion al ambiente (generador), con la cantidad de transacciones, el retardo maximo y el caso de prueba 0s 5s As y Fs
-    instruccion_test instr= new();
-    this.randomize();
-    // aca se mantienen los mismos parametros de retardo y numero de transacciones aleatorios, pero se le indica al generador que se quiere hacer eventos de reset aleatorios, se puede cambiar el retardo y numero de transacciones si se desea
-    instr.tipo = RESET_RANDOM_HALF;
-    instr.num_trans=this.num_transacciones;
-    instr.ret_max=this.retardo;
-    // se ejecuta el ambiente
-    fork
-      ambiente_inst.run();
-    join_none
-        // se envia el paquete de ocnfiguracion mediante un mailbox al generador del ambiente   
-    ambiente_inst.test_gen_mbx.put(instr); // implementar el mailbox en el ambiente y la conexión al generador
-    // aca se espera lo mismo que en el test base
-    wait(ambiente_inst.scoreboard_inst.test_terminado);
-    $finish;
-    endtask
+  virtual function string get_nombre(); return "test_intercalado"; endfunction
+  virtual task run;
+    $display("[%0t]  El Test de llenado intercalado (0/5/A/F) fue inicializado", $time);
+    this.randomize(); aplicar_plusargs(); ejecutar(trans_pattern_0_5_A_F);
+  endtask
+endclass
 
-    endclass
-  
-    
-    class test_overflow extends test_base; // este test maneja el caso de eventos de reset aleatorios
-  function new(virtual fifo_if  #(.width(width)) _if);
+
+// aqui pruebo overflow.
+class test_overflow #(parameter width = 16, parameter depth = 8)
+  extends test_base #(.width(width), .depth(depth));
+
+  function new(virtual fifo_if #(.width(width)) _if);
     super.new(_if);
   endfunction
-    // aca se sobreescribe el run para enviar la instruccion al generador de que se quiere hacer eventos de reset aleatorios
- virtual task run;
-    $display("[%g]  El Test de reset aleatorio fue inicializado",$time);
-    // se pasa la configuracion al ambiente (generador), con la cantidad de transacciones, el retardo maximo y el caso de prueba 0s 5s As y Fs
-    instruccion_test instr= new();
-    this.randomize();
-    // aca se mantienen los mismos parametros de retardo y numero de transacciones aleatorios, pero se le indica al generador que se quiere hacer eventos de reset aleatorios, se puede cambiar el retardo y numero de transacciones si se desea
-    instr.tipo = OVERFLOW;
-    instr.num_trans=this.num_transacciones;
-    instr.ret_max=this.retardo;
-    // se ejecuta el ambiente
-    fork
-      ambiente_inst.run();
-    join_none
-        // se envia el paquete de ocnfiguracion mediante un mailbox al generador del ambiente   
-    ambiente_inst.test_gen_mbx.put(instr); // implementar el mailbox en el ambiente y la conexión al generador
-    // aca se espera lo mismo que en el test base
-    wait(ambiente_inst.scoreboard_inst.test_terminado);
-    $finish;
-    endtask
+  virtual function string get_nombre(); return "test_overflow"; endfunction
+  virtual task run;
+    $display("[%0t]  El Test de overflow fue inicializado", $time);
+    this.randomize(); aplicar_plusargs(); ejecutar(trans_overflow);
+  endtask
+endclass
 
-    endclass
 
-    class test_underflow extends test_base; // este test maneja el caso de eventos de reset aleatorios
-  function new(virtual fifo_if  #(.width(width)) _if);
+// aqui pruebo underflow.
+class test_underflow #(parameter width = 16, parameter depth = 8)
+  extends test_base #(.width(width), .depth(depth));
+
+  function new(virtual fifo_if #(.width(width)) _if);
     super.new(_if);
   endfunction
-    // aca se sobreescribe el run para enviar la instruccion al generador de que se quiere hacer eventos de reset aleatorios
- virtual task run;
-    $display("[%g]  El Test de reset aleatorio fue inicializado",$time);
-    // se pasa la configuracion al ambiente (generador), con la cantidad de transacciones, el retardo maximo y el caso de prueba 0s 5s As y Fs
-    instruccion_test instr= new();
-    this.randomize();
-    // aca se mantienen los mismos parametros de retardo y numero de transacciones aleatorios, pero se le indica al generador que se quiere hacer eventos de reset aleatorios, se puede cambiar el retardo y numero de transacciones si se desea
-    instr.tipo = UNDERFLOW;
-    instr.num_trans=this.num_transacciones;
-    instr.ret_max=this.retardo;
-    // se ejecuta el ambiente
-    fork
-      ambiente_inst.run();
-    join_none
-        // se envia el paquete de ocnfiguracion mediante un mailbox al generador del ambiente   
-    ambiente_inst.test_gen_mbx.put(instr); // implementar el mailbox en el ambiente y la conexión al generador
-    // aca se espera lo mismo que en el test base
-    wait(ambiente_inst.scoreboard_inst.test_terminado);
-    $finish;
-    endtask
+  virtual function string get_nombre(); return "test_underflow"; endfunction
+  virtual task run;
+    $display("[%0t]  El Test de underflow fue inicializado", $time);
+    this.randomize(); aplicar_plusargs(); ejecutar(trans_underflow);
+  endtask
+endclass
 
-    endclass
 
-    class test_pop_push extends test_base; // este test maneja el caso de eventos de reset aleatorios
-  function new(virtual fifo_if  #(.width(width)) _if);
+// aqui pruebo pop/push con ocupacion baja.
+class test_pop_push_bajo #(parameter width = 16, parameter depth = 8)
+  extends test_base #(.width(width), .depth(depth));
+
+  constraint num_transacciones_c { num_transacciones inside {[2:4]}; }
+
+  function new(virtual fifo_if #(.width(width)) _if);
     super.new(_if);
   endfunction
-    // aca se sobreescribe el run para enviar la instruccion al generador de que se quiere hacer eventos de reset aleatorios
- virtual task run;
-    $display("[%g]  El Test de reset aleatorio fue inicializado",$time);
-    // se pasa la configuracion al ambiente (generador), con la cantidad de transacciones, el retardo maximo y el caso de prueba 0s 5s As y Fs
-    instruccion_test instr= new();
-    this.randomize();
-    // aca se mantienen los mismos parametros de retardo y numero de transacciones aleatorios, pero se le indica al generador que se quiere hacer eventos de reset aleatorios, se puede cambiar el retardo y numero de transacciones si se desea
-    instr.tipo = POP_PUSH;
-    instr.num_trans=this.num_transacciones;
-    instr.ret_max=this.retardo;
-    // se ejecuta el ambiente
-    fork
-      ambiente_inst.run();
-    join_none
-        // se envia el paquete de ocnfiguracion mediante un mailbox al generador del ambiente   
-    ambiente_inst.test_gen_mbx.put(instr); // implementar el mailbox en el ambiente y la conexión al generador
-    // aca se espera lo mismo que en el test base
-    wait(ambiente_inst.scoreboard_inst.test_terminado);
-    $finish;
-    endtask
+  virtual function string get_nombre(); return "test_pop_push_bajo"; endfunction
+  virtual task run;
+    $display("[%0t]  El Test de pop/push bajo fue inicializado", $time);
+    this.randomize(); aplicar_plusargs(); ejecutar(trans_poppush_bajo);
+  endtask
+endclass
 
-    endclass
 
-       class test_pop_push extends test_base; // este test maneja el caso de eventos de reset aleatorios
-  function new(virtual fifo_if  #(.width(width)) _if);
+// aqui pruebo pop/push con ocupacion media.
+class test_pop_push_medio #(parameter width = 16, parameter depth = 8)
+  extends test_base #(.width(width), .depth(depth));
+
+  constraint num_transacciones_c { num_transacciones inside {[4:6]}; }
+
+  function new(virtual fifo_if #(.width(width)) _if);
     super.new(_if);
   endfunction
-    // aca se sobreescribe el run para enviar la instruccion al generador de que se quiere hacer eventos de reset aleatorios
- virtual task run;
-    $display("[%g]  El Test de reset aleatorio fue inicializado",$time);
-    // se pasa la configuracion al ambiente (generador), con la cantidad de transacciones, el retardo maximo y el caso de prueba 0s 5s As y Fs
-    instruccion_test instr= new();
-    this.randomize();
-    // aca se mantienen los mismos parametros de retardo y numero de transacciones aleatorios, pero se le indica al generador que se quiere hacer eventos de reset aleatorios, se puede cambiar el retardo y numero de transacciones si se desea
-    instr.tipo = POP_PUSH;
-    instr.num_trans=this.num_transacciones;
-    instr.ret_max=this.retardo;
-    // se ejecuta el ambiente
-    fork
-      ambiente_inst.run();
-    join_none
-        // se envia el paquete de ocnfiguracion mediante un mailbox al generador del ambiente   
-    ambiente_inst.test_gen_mbx.put(instr); // implementar el mailbox en el ambiente y la conexión al generador
-    // aca se espera lo mismo que en el test base
-    wait(ambiente_inst.scoreboard_inst.test_terminado);
-    $finish;
-    endtask
+  virtual function string get_nombre(); return "test_pop_push_medio"; endfunction
+  virtual task run;
+    $display("[%0t]  El Test de pop/push medio fue inicializado", $time);
+    this.randomize(); aplicar_plusargs(); ejecutar(trans_poppush_medio);
+  endtask
+endclass
 
-    endclass
-    
+
+// aqui pruebo pop/push con ocupacion alta.
+class test_pop_push_alto #(parameter width = 16, parameter depth = 8)
+  extends test_base #(.width(width), .depth(depth));
+
+  constraint num_transacciones_c { num_transacciones inside {[6:10]}; }
+
+  function new(virtual fifo_if #(.width(width)) _if);
+    super.new(_if);
+  endfunction
+  virtual function string get_nombre(); return "test_pop_push_alto"; endfunction
+  virtual task run;
+    $display("[%0t]  El Test de pop/push alto fue inicializado", $time);
+    this.randomize(); aplicar_plusargs(); ejecutar(trans_poppush_alto);
+  endtask
+endclass
+
+
+// aqui meto reset con la fifo llena.
+class test_reset_full #(parameter width = 16, parameter depth = 8)
+  extends test_base #(.width(width), .depth(depth));
+
+  function new(virtual fifo_if #(.width(width)) _if);
+    super.new(_if);
+  endfunction
+  virtual function string get_nombre(); return "test_reset_full"; endfunction
+  virtual task run;
+    $display("[%0t]  El Test de reset con FIFO llena fue inicializado", $time);
+    this.randomize(); aplicar_plusargs(); ejecutar(reset_full_aleatorio);
+  endtask
+endclass
+
+
+// aqui meto reset con la fifo vacia.
+class test_reset_empty #(parameter width = 16, parameter depth = 8)
+  extends test_base #(.width(width), .depth(depth));
+
+  function new(virtual fifo_if #(.width(width)) _if);
+    super.new(_if);
+  endfunction
+  virtual function string get_nombre(); return "test_reset_empty"; endfunction
+  virtual task run;
+    $display("[%0t]  El Test de reset con FIFO vacía fue inicializado", $time);
+    this.randomize(); aplicar_plusargs(); ejecutar(reset_empty_aleatorio);
+  endtask
+endclass
+
+
+// aqui meto reset con la fifo a la mitad.
+class test_reset_half #(parameter width = 16, parameter depth = 8)
+  extends test_base #(.width(width), .depth(depth));
+
+  function new(virtual fifo_if #(.width(width)) _if);
+    super.new(_if);
+  endfunction
+  virtual function string get_nombre(); return "test_reset_half"; endfunction
+  virtual task run;
+    $display("[%0t]  El Test de reset con FIFO a la mitad fue inicializado", $time);
+    this.randomize(); aplicar_plusargs(); ejecutar(reset_half_aleatorio);
+  endtask
+endclass
+
+
+// aqui corro una secuencia aleatoria general.
+class test_secuencia_aleatoria #(parameter width = 16, parameter depth = 8)
+  extends test_base #(.width(width), .depth(depth));
+
+  function new(virtual fifo_if #(.width(width)) _if);
+    super.new(_if);
+  endfunction
+  virtual function string get_nombre(); return "test_secuencia_aleatoria"; endfunction
+  virtual task run;
+    $display("[%0t]  El Test de secuencia aleatoria fue inicializado", $time);
+    this.randomize(); aplicar_plusargs(); ejecutar(sec_trans_aleatorias);
+  endtask
+endclass

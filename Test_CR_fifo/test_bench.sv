@@ -3,22 +3,23 @@
 `include "interface_transactions.sv"
 `include "driver.sv"
 `include "checker.sv"
+`include "monitor.sv"
 `include "score_board.sv"
+`include "generator.sv"
 `include "agent.sv"
 `include "ambiente.sv"
-`include "Test_nuevo.sv" // LISTO
+`include "test_nuevo.sv"
 
 ///////////////////////////////////
 // Módulo para correr la prueba  //
 ///////////////////////////////////
 module test_bench; 
   reg clk;
-  // estos parametros se deben randomizar pero no se como xd
-   parameter width = 16;
-   parameter depth = 8;
+  parameter width = 16;
+  parameter depth = 8;
   test_base #(.depth(depth),.width(width)) t0;
-  // este va a ser el parametro que me indique el tipo de prueba a ejecutar
-  string nombre_test;
+  string test_name;
+
   fifo_if  #(.width(width)) _if(.clk(clk));
   always #5 clk = ~clk;
 
@@ -44,62 +45,36 @@ module test_bench;
     .pndng(_if.pndng),
     .rst(_if.rst)
   );
-  // aca se van a pedir los plusargs para configurar la prueba, segun la prueba se va a instanciar un hijo de la clase padre 
+
   initial begin
     clk = 0;
-    // se lee el nombre de la prueba a ejecutar 
-    if (!$value$plusargs("TEST=%s", nombre_test)) begin
-        nombre_test = "base"; // Test por defecto si no se pone nada
+
+    if(!$value$plusargs("TEST=%s", test_name)) begin
+      test_name = "test_base";
     end
 
-    // Selección dinámica del objeto segun la prueba
-    case(nombre_test)
-      "base":        t0 = new(_if); 
-      "intercalado": begin
-                       test_intercalado #(.depth(depth), .width(width)) t_int;
-                       t_int = new(_if);
-                       t0 = t_int; 
-                     end
-      "reset":       begin
-                       test_reset_random #(.depth(depth), .width(width)) t_rst;
-                       t_rst = new(_if);
-                       t0 = t_rst;
-                     end
-      "overflow":    begin
-                       test_overflow #(.depth(depth), .width(width)) t_ovf;
-                       t_ovf = new(_if);
-                       t0 = t_ovf;
-                     end
-      "underflow":   begin
-                       test_underflow #(.depth(depth), .width(width)) t_uf;
-                        t_uf = new(_if);
-                        t0 = t_uf;
-                      end
-      "pop_push":    begin
-                       test_pop_push #(.depth(depth), .width(width)) t_pp;
-                       t_pp = new(_if);
-                       t0 = t_pp;
-                      end
-      "reset_empty": begin 
-                       test_reset_random_empty #(.depth(depth), .width(width)) t_rste;
-                       t_rste = new(_if);
-                       t0 = t_rste;
-                      end  
-      "reset_full": begin   
-                       test_reset_random_full #(.depth(depth), .width(width)) t_rstf;
-                       t_rstf = new(_if);
-                       t0 = t_rstf;
-                      end
-                      
-      "reset_half": begin   
-                       test_reset_random_half #(.depth(depth), .width(width)) t_rsth;
-                       t_rsth = new(_if);
-                       t0 = t_rsth;
-                      end
-
-      default:       t0 = new(_if);
+    case(test_name)
+      "test_base": t0 = test_base #(.depth(depth),.width(width))::new(_if);
+      "test_trans_aleatoria": t0 = test_trans_aleatoria #(.depth(depth),.width(width))::new(_if);
+      "test_trans_especifica": t0 = test_trans_especifica #(.depth(depth),.width(width))::new(_if);
+      "test_trans_lectura_escritura": t0 = test_trans_lectura_escritura #(.depth(depth),.width(width))::new(_if);
+      "test_intercalado": t0 = test_intercalado #(.depth(depth),.width(width))::new(_if);
+      "test_overflow": t0 = test_overflow #(.depth(depth),.width(width))::new(_if);
+      "test_underflow": t0 = test_underflow #(.depth(depth),.width(width))::new(_if);
+      "test_pop_push_bajo": t0 = test_pop_push_bajo #(.depth(depth),.width(width))::new(_if);
+      "test_pop_push_medio": t0 = test_pop_push_medio #(.depth(depth),.width(width))::new(_if);
+      "test_pop_push_alto": t0 = test_pop_push_alto #(.depth(depth),.width(width))::new(_if);
+      "test_reset_full": t0 = test_reset_full #(.depth(depth),.width(width))::new(_if);
+      "test_reset_empty": t0 = test_reset_empty #(.depth(depth),.width(width))::new(_if);
+      "test_reset_half": t0 = test_reset_half #(.depth(depth),.width(width))::new(_if);
+      "test_secuencia_aleatoria": t0 = test_secuencia_aleatoria #(.depth(depth),.width(width))::new(_if);
+      default: begin
+        $display("Test_bench Error: TEST=%s no existe", test_name);
+        $finish;
+      end
     endcase
 
+    $display("Test_bench: Ejecutando %s", test_name);
     fork
       t0.run();
     join_none

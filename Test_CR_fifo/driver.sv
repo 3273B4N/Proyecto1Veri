@@ -1,10 +1,10 @@
  /////////////////////////////////////////////////////////////////////////////////////////////////////////////
- // Driver/Monitor: este objeto es responsable de la interacción entre el ambiente y el la fifo bajo prueba //
+ // Driver: aqui yo manejo la interacción entre el ambiente y la fifo bajo prueba //
  /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  class driver #(parameter width =16);
+class driver #(parameter width =16);
     virtual fifo_if #(.width(width))vif;
     trans_fifo_mbx agnt_drv_mbx;
-    trans_fifo_mbx drv_chkr_mbx;    
+//    trans_fifo_mbx drv_chkr_mbx;     //eliminar
     int espera;
 
     task run();
@@ -27,29 +27,42 @@
         $display("Transacciones pendientes en el mbx agnt_drv = %g",agnt_drv_mbx.num());
 
         while(espera < transaction.retardo)begin
+          // aqui espero el retardo que trae la transaccion antes de ejecutarla
           @(posedge vif.clk);
           espera = espera+1;
           vif.dato_in = transaction.dato;
-	end
-        case(transaction.tipo)
+	      end
+    case(transaction.tipo)
 	  lectura: begin
-	     transaction.dato = vif.dato_out;
-	     transaction.tiempo = $time;
-	     @(posedge vif.clk);
-	     vif.pop = 1;
-	     drv_chkr_mbx.put(transaction);
+       vif.pop = 1;
+       @(posedge vif.clk);
+       @(negedge vif.clk);
+       vif.pop = 0;
 	     transaction.print("Driver: Transaccion ejecutada");
 	   end
-	   escritura: begin
-	     vif.push = 1;
-	     transaction.tiempo = $time;
-	     drv_chkr_mbx.put(transaction); 
+    escritura: begin
+       vif.dato_in = transaction.dato;
+       vif.push = 1;
+       @(posedge vif.clk);
+       @(negedge vif.clk);
+       vif.push = 0;
 	     transaction.print("Driver: Transaccion ejecutada");
 	   end
-	   reset: begin
-	     vif.rst =1;
-	     transaction.tiempo = $time;
-	     drv_chkr_mbx.put(transaction); 
+    lectura_escritura: begin
+        vif.push = 1;
+        vif.pop = 1;
+      vif.dato_in = transaction.dato;
+      @(posedge vif.clk);
+      @(negedge vif.clk);
+      vif.push = 0;
+      vif.pop = 0;
+        transaction.print("Driver: Transaccion ejecutada");        
+     end
+    reset: begin
+       vif.rst = 1;
+       @(posedge vif.clk);
+       @(negedge vif.clk);
+       vif.rst = 0;
 	     transaction.print("Driver: Transaccion ejecutada");
 	   end
 	  default: begin
@@ -60,5 +73,5 @@
 	@(posedge vif.clk);
       end
     endtask
-  endclass
+endclass
 
