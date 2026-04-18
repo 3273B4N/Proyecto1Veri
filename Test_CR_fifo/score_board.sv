@@ -2,8 +2,11 @@
 // Scoreboard: Este objeto se encarga de llevar un estado del comportamiento de la prueba y es capa de generar reportes //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class score_board #(parameter width=16);
+  trans_fifo_mbx agnt_sb_mbx;
+  trans_fifo_mbx sb_chkr_mbx;
   trans_sb_mbx  chkr_sb_mbx;
   comando_test_sb_mbx test_sb_mbx;
+  trans_fifo #(.width(width)) transaccion_esperada;
   trans_sb #(.width(width))transaccion_entrante; 
   trans_sb scoreboard[$]; // esta es la estructura dinámica que maneja el scoreboard  
   trans_sb auxiliar_array[$]; // estructura auxiliar usada para explorar el scoreboard;  
@@ -18,6 +21,12 @@ class score_board #(parameter width=16);
     $display("[%g] El Score Board fue inicializado",$time);
     forever begin
       #5
+      if(agnt_sb_mbx.num()>0)begin
+        agnt_sb_mbx.get(transaccion_esperada);
+        transaccion_esperada.print("Score Board: transaccion esperada recibida desde el agente");
+        sb_chkr_mbx.put(transaccion_esperada);
+      end
+
       if(chkr_sb_mbx.num()>0)begin
         chkr_sb_mbx.get(transaccion_entrante);
         transaccion_entrante.print("Score Board: transacción recibida desde el checker");
@@ -26,27 +35,31 @@ class score_board #(parameter width=16);
           transacciones_completadas++;
         end
         scoreboard.push_back(transaccion_entrante);
-      end else begin
-        if(test_sb_mbx.num()>0)begin
-          test_sb_mbx.get(orden);
-          case(orden)
-            retardo_promedio: begin
-              $display("Score Board: Recibida Orden Retardo_Promedio");
+      end
+
+      if(test_sb_mbx.num()>0)begin
+        test_sb_mbx.get(orden);
+        case(orden)
+          retardo_promedio: begin
+            $display("Score Board: Recibida Orden Retardo_Promedio");
+            if(transacciones_completadas > 0) begin
               retardo_promedio = retardo_total/transacciones_completadas;
-              $display("[%g] Score board: el retardo promedio es: %0.3f", $time, retardo_promedio);
+            end else begin
+              retardo_promedio = 0.0;
             end
-            reporte: begin
-              $display("Score Board: Recibida Orden Reporte");
-              tamano_sb = this.scoreboard.size();
-              for(int i=0;i<tamano_sb;i++) begin
-                auxiliar_trans = scoreboard.pop_front;
-                auxiliar_trans.print("SB_Report:");
-                auxiliar_array.push_back(auxiliar_trans);
-              end
-              scoreboard = auxiliar_array;
+            $display("[%g] Score board: el retardo promedio es: %0.3f", $time, retardo_promedio);
+          end
+          reporte: begin
+            $display("Score Board: Recibida Orden Reporte");
+            tamano_sb = this.scoreboard.size();
+            for(int i=0;i<tamano_sb;i++) begin
+              auxiliar_trans = scoreboard.pop_front;
+              auxiliar_trans.print("SB_Report:");
+              auxiliar_array.push_back(auxiliar_trans);
             end
-          endcase
-       end
+            scoreboard = auxiliar_array;
+          end
+        endcase
       end
     end
   endtask

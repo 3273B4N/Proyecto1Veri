@@ -1,9 +1,10 @@
 `timescale 1ns/1ps
 `include "fifo.sv"
 `include "interface_transactions.sv"
+`include "generator.sv"
 `include "driver.sv"
+`include "monitor.sv"
 `include "checker.sv"
-`inclue  "monitor.sv" //se agrega esta parte
 `include "score_board.sv"
 `include "agent.sv"
 `include "ambiente.sv"
@@ -16,6 +17,7 @@ module test_bench;
   reg clk;
   parameter width = 16;
   parameter depth = 8;
+  localparam int tiempo_max_tb = depth * 500000;
   test #(.depth(depth),.width(width)) t0;
 
   fifo_if  #(.width(width)) _if(.clk(clk));
@@ -48,14 +50,15 @@ module test_bench;
     clk = 0;
     t0 = new();
     t0._if = _if;
-    t0.ambiente_inst.monitor_inst.vif = _if; //se cambio esta parte
+    t0.ambiente_inst.driver_inst.vif = _if;
+    t0.ambiente_inst.monitor_inst.vif = _if;
     fork
       t0.run();
     join_none
   end
  
   always@(posedge clk) begin
-    if ($time > 100000)begin
+    if ($time > tiempo_max_tb)begin
       $display("Test_bench: Tiempo límite de prueba en el test_bench alcanzado");
       $finish;
     end
