@@ -22,14 +22,12 @@ class monitor #(parameter width =16);
     forever begin
       @(posedge vif.clk);  // el monitor muestrea en cada flanco de subida del reloj
 
-      // deteccion de flanco de subida en rst: rst activo ahora y estaba inactivo antes
+      // deteccion de flanco de subida en rst
       if(vif.rst && !rst_prev) begin
-        if(!reset_inicial_filtrado) begin
-          // el primer reset que ocurre se ignora porque es el reset de inicializacion del sistema
+        if(($time == 0) && !reset_inicial_filtrado) begin
           reset_inicial_filtrado = 1;
           $display("[%g] Monitor: Reset inicial filtrado", $time);
         end else begin
-          // cualquier reset despues del inicial si se reporta al checker
           transaction = new();
           transaction.tipo = reset;
           transaction.tiempo = $time;
