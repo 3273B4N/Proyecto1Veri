@@ -140,13 +140,27 @@ class agent #(parameter width = 16, parameter depth = 8);
 
             apply_cfg_to_transaction(transaccion);
 
+            // Si push+pop esta habilitado pero underflow no, arrancar en vacio
+            // genera una contradiccion de constraints. En ese caso, la unica
+            // transaccion valida para este comando es una escritura de siembra.
+            if (habilitar_push_pop && !habilitar_underflow && (nivel_model == 0)) begin
+              transaccion.habilitar_push_pop = 0;
+              if(!transaccion.randomize() with {
+                if (!(habilitar_fifo_full || habilitar_fifo_empty || habilitar_fifo_mid))
+                  nivel_fifo == nivel_model;
+                tipo == escritura;
+              })
+                $fatal("[%g] Agente ERROR: no se pudo randomizar la escritura de siembra", $time);
+
+              transaccion.print("Agente: transacción de siembra creada");
+              agnt_drv_mbx.put(transaccion);
+              actualizar_nivel_model(transaccion);
+              continue;
+            end
+
             if(!transaccion.randomize() with {
               if (!(habilitar_fifo_full || habilitar_fifo_empty || habilitar_fifo_mid))
                 nivel_fifo == nivel_model;
-
-              // Evita contradicción al arrancar en vacio con push+pop y underflow deshabilitado.
-              if (habilitar_push_pop && !habilitar_underflow && (nivel_model == 0))
-                tipo == escritura;
             })
               $fatal("[%g] Agente ERROR: no se pudo randomizar la transacción aleatoria", $time);
 
@@ -182,13 +196,27 @@ class agent #(parameter width = 16, parameter depth = 8);
 
               apply_cfg_to_transaction(transaccion);
 
+              // Si push+pop esta habilitado pero underflow no, arrancar en vacio
+              // genera una contradiccion de constraints. Se inyecta una sola
+              // escritura de siembra y luego continúan las simultáneas.
+              if (habilitar_push_pop && !habilitar_underflow && (nivel_model == 0)) begin
+                transaccion.habilitar_push_pop = 0;
+                if(!transaccion.randomize() with {
+                  if (!(habilitar_fifo_full || habilitar_fifo_empty || habilitar_fifo_mid))
+                    nivel_fifo == nivel_model;
+                  tipo == escritura;
+                })
+                  $fatal("[%g] Agente ERROR: no se pudo randomizar la escritura de siembra", $time);
+
+                transaccion.print("Agente: transacción de siembra creada");
+                agnt_drv_mbx.put(transaccion);
+                actualizar_nivel_model(transaccion);
+                continue;
+              end
+
               if(!transaccion.randomize() with {
                 if (!(habilitar_fifo_full || habilitar_fifo_empty || habilitar_fifo_mid))
                   nivel_fifo == nivel_model;
-
-                // Evita contradicción al arrancar en vacio con push+pop y underflow deshabilitado.
-                if (habilitar_push_pop && !habilitar_underflow && (nivel_model == 0))
-                  tipo == escritura;
               })
                 $fatal("[%g] Agente ERROR: no se pudo randomizar la transacción aleatoria", $time);
             
