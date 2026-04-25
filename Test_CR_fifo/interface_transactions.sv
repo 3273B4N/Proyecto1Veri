@@ -2,7 +2,7 @@
 // Definición del tipo de transacciones posibles en la fifo //
 //////////////////////////////////////////////////////////////
 
-typedef enum { lectura, escritura, lectura_escritura,  reset} tipo_trans; 
+typedef enum { lectura, escritura, lectura_escritura, reset} tipo_trans;
 
 /////////////////////////////////////////////////////////////////////////////////////////
 //Transacción: este objeto representa las transacciones que entran y salen de la fifo. //
@@ -10,8 +10,9 @@ typedef enum { lectura, escritura, lectura_escritura,  reset} tipo_trans;
 class trans_fifo #(parameter width = 16);
   rand int retardo; // tiempo de retardo en ciclos de reloj que se debe esperar antes de ejecutar la transacción
   rand bit[width-1:0] dato; // este es el dato de la transacción
+  bit [width-1:0] dato_pop; // dato observado en salida para lecturas
   int tiempo; //Representa el tiempo  de la simulación en el que se ejecutó la transacción 
-  rand tipo_trans tipo; // lectura, escritura, reset;
+  rand tipo_trans tipo; // lectura, escritura, lectura_escritura, reset
   int max_retardo;
  
   constraint const_retardo {retardo < max_retardo; retardo>0;}
@@ -19,6 +20,7 @@ class trans_fifo #(parameter width = 16);
   function new(int ret =0,bit[width-1:0] dto=0,int tmp = 0, tipo_trans tpo = lectura, int mx_rtrd = 10);
     this.retardo = ret;
     this.dato = dto;
+    this.dato_pop = 0;
     this.tiempo = tmp;
     this.tipo = tpo;
     this.max_retardo = mx_rtrd;
@@ -27,13 +29,14 @@ class trans_fifo #(parameter width = 16);
   function clean;
     this.retardo = 0;
     this.dato = 0;
+    this.dato_pop = 0;
     this.tiempo = 0;
     this.tipo = lectura;
     
   endfunction
     
   function void print(string tag = "");
-    $display("[%g] %s Tiempo=%g Tipo=%s Retardo=%g dato=0x%h",$time,tag,tiempo,this.tipo,this.retardo,this.dato);
+    $display("[%g] %s Tiempo=%g Tipo=%s Retardo=%g dato=0x%h dato_pop=0x%h",$time,tag,tiempo,this.tipo,this.retardo,this.dato,this.dato_pop);
   endfunction
 endclass
 
@@ -108,22 +111,7 @@ typedef enum {retardo_promedio,reporte} solicitud_sb;
 /////////////////////////////////////////////////////////////////////////
 // Definición de estructura para generar comandos hacia el agente      //
 /////////////////////////////////////////////////////////////////////////
-typedef enum {
-  llenado_aleatorio,
-  trans_aleatoria,
-  trans_especifica,
-  sec_trans_aleatorias,
-  trans_lectura_escritura,
-  trans_pattern_0_5_A_F,
-  trans_overflow,
-  trans_underflow,
-  trans_poppush_bajo,
-  trans_poppush_medio,
-  trans_poppush_alto,
-  reset_full_aleatorio,
-  reset_empty_aleatorio,
-  reset_half_aleatorio
-} instrucciones_agente;
+typedef enum {llenado_aleatorio,trans_aleatoria,trans_especifica,sec_trans_aleatorias} instrucciones_agente;
 
 ///////////////////////////////////////////////////////////////////////////////////////
 // Definicion de mailboxes de tipo definido trans_fifo para comunicar las interfaces //

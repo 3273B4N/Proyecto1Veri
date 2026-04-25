@@ -1,77 +1,95 @@
- /////////////////////////////////////////////////////////////////////////////////////////////////////////////
- // Driver: aqui yo manejo la interacción entre el ambiente y la fifo bajo prueba //
- /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class driver #(parameter width =16);
-    virtual fifo_if #(.width(width))vif;
-    trans_fifo_mbx agnt_drv_mbx;
-//    trans_fifo_mbx drv_chkr_mbx;     //eliminar
-    int espera;
+///////////////////////////////////////////////////////////////////////////////
+// driver.sv
+// Driver: Traduce transacciones del agente en estímulos sobre la interfaz
+// del DUT. No observa salidas (eso lo hace el monitor).
+// CAMBIOS respecto al original:
+//   - Separado del monitor: ya NO lee dato_out ni envía al checker.
+//   - Soporta el tipo 'simultaneo' (push y pop en el mismo ciclo).
+//   - Envía la transacción ejecutada al monitor mediante drv_mon_mbx.
+///////////////////////////////////////////////////////////////////////////////
+class driver #(parameter width = 16);
+  virtual fifo_if #(.width(width)) vif;
 
-    task run();
-      $display("[%g]  El driver fue inicializado",$time);
-      vif.rst=1;
+  trans_fifo_mbx agnt_drv_mbx;  // Recibe transacciones del agente
+  trans_fifo_mbx drv_mon_mbx;   // Envía transacciones ejecutadas al monitor
+
+  int espera;
+
+  task run();
+    $display("[%0t]  Driver: inicializado", $time);
+    // Reset inicial de dos ciclos
+    vif.rst    = 1;
+    vif.push   = 0;
+    vif.pop    = 0;
+    vif.dato_in = 0;
+    @(posedge vif.clk);
+    @(posedge vif.clk);
+    vif.rst = 0;
+
+    forever begin
+      trans_fifo #(.width(width)) transaction;
+
+      // Pone las señales en reposo al inicio de cada ciclo
       @(posedge vif.clk);
-      vif.rst=1;
-      @(posedge vif.clk);
-      forever begin
-        trans_fifo #(.width(width)) transaction; 
-        vif.push = 0;
-        vif.rst = 0;
-        vif.pop = 0;
-        vif.dato_in = 0;
-        $display("[%g] el Driver espera por una transacción",$time);
-        espera = 0;
+      vif.push    = 0;
+      vif.pop     = 0;
+      vif.rst     = 0;
+      vif.dato_in = 0;
+
+      $display("[%0t] Driver: esperando transacción (mbx=%0d pendientes)",
+               $time, agnt_drv_mbx.num());
+      agnt_drv_mbx.get(transaction);
+      transaction.print("Driver: transacción recibida");
+
+      // Aplica retardo solicitado por la transacción
+      espera = 0;
+      while (espera < transaction.retardo) begin
         @(posedge vif.clk);
-        agnt_drv_mbx.get(transaction);
-        transaction.print("Driver: Transaccion recibida");
-        $display("Transacciones pendientes en el mbx agnt_drv = %g",agnt_drv_mbx.num());
-
-        while(espera < transaction.retardo)begin
-          // aqui espero el retardo que trae la transaccion antes de ejecutarla
-          @(posedge vif.clk);
-          espera = espera+1;
-          vif.dato_in = transaction.dato;
-	      end
-    case(transaction.tipo)
-	  lectura: begin
-       vif.pop = 1;
-       @(posedge vif.clk);
-       @(negedge vif.clk);
-       vif.pop = 0;
-	     transaction.print("Driver: Transaccion ejecutada");
-	   end
-    escritura: begin
-       vif.dato_in = transaction.dato;
-       vif.push = 1;
-       @(posedge vif.clk);
-       @(negedge vif.clk);
-       vif.push = 0;
-	     transaction.print("Driver: Transaccion ejecutada");
-	   end
-    lectura_escritura: begin
-        vif.push = 1;
-        vif.pop = 1;
-      vif.dato_in = transaction.dato;
-      @(posedge vif.clk);
-      @(negedge vif.clk);
-      vif.push = 0;
-      vif.pop = 0;
-        transaction.print("Driver: Transaccion ejecutada");        
-     end
-    reset: begin
-       vif.rst = 1;
-       @(posedge vif.clk);
-       @(negedge vif.clk);
-       vif.rst = 0;
-	     transaction.print("Driver: Transaccion ejecutada");
-	   end
-	  default: begin
-	    $display("[%g] Driver Error: la transacción recibida no tiene tipo valido",$time);
-	    $finish;
-	  end 
-	endcase    
-	@(posedge vif.clk);
+        espera++;
       end
-    endtask
-endclass
 
+      // Aplica la transacción sobre la interfaz
+      case (transaction.tipo)
+
+        escritura: begin
+          vif.dato_in          = transaction.dato;
+          vif.push             = 1;
+          transaction.tiempo   = $time;
+          transaction.print("Driver: escritura aplicada");
+        end
+
+        lectura: begin
+          vif.pop              = 1;
+          transaction.tiempo   = $time;
+          transaction.print("Driver: lectura aplicada");
+        end
+
+        lectura_escritura: begin
+          // Push y pop en el mismo ciclo de reloj
+          vif.dato_in          = transaction.dato;
+          vif.push             = 1;
+          vif.pop              = 1;
+          transaction.tiempo   = $time;
+          transaction.print("Driver: push+pop simultáneo aplicado");
+        end
+
+        reset: begin
+          vif.rst              = 1;
+          transaction.tiempo   = $time;
+          transaction.print("Driver: reset aplicado");
+        end
+
+        default: begin
+          $display("[%0t] Driver ERROR: tipo de transacción inválido", $time);
+          $finish;
+        end
+
+      endcase
+
+      // Notifica al monitor que la transacción fue lanzada
+      drv_mon_mbx.put(transaction);
+
+    end // forever
+  endtask
+
+endclass

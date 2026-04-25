@@ -1,81 +1,65 @@
-class monitor #(parameter width =16);
-    virtual fifo_if #(.width(width))vif;
-    trans_fifo_mbx mon_chkr_mbx; // por aqui yo le paso cosas al checker
-    bit push_prev;               // aqui guardo el push del ciclo pasado
-    bit pop_prev;                // aqui guardo el pop del ciclo pasado
-    bit rst_prev;                // aqui guardo el rst del ciclo pasado
-    
-    task run();
-        bit push_evt; // aqui marco cuando push hace flanco de subida
-        bit pop_evt;  // aqui marco cuando pop hace flanco de subida
-        bit rst_evt;  // aqui marco cuando rst hace flanco de subida
+///////////////////////////////////////////////////////////////////////////////
+// monitor.sv
+// Monitor: Observa pasivamente la interfaz del DUT y captura el resultado
+// real de cada transacción (especialmente dato_out en lecturas).
+// Luego envía la transacción completada al checker.
+// NUEVO módulo — en el diseño original esta lógica estaba mezclada
+// con el driver.
+///////////////////////////////////////////////////////////////////////////////
+class monitor #(parameter width = 16);
+  virtual fifo_if #(.width(width)) vif;
 
-        $display("[%g]  El monitor fue inicializado",$time);
-        // yo arranco todo en 0 para empezar limpio
-        push_prev = 0;
-        pop_prev = 0;
-        rst_prev = 0;
-        forever begin
-            trans_fifo #(.width(width)) transaction;
-            @(posedge vif.clk);
+  trans_fifo_mbx drv_mon_mbx;   // Recibe transacciones despachadas por el driver
+  trans_fifo_mbx mon_chkr_mbx;  // Envía transacciones observadas al checker
 
-            // aqui convierto nivel a evento por flanco, asi no cuento doble.
-            push_evt = (vif.push && !push_prev);
-            pop_evt  = (vif.pop  && !pop_prev);
-            rst_evt  = (vif.rst  && !rst_prev);
+  task run();
+    $display("[%0t]  Monitor: inicializado", $time);
 
-            // si detecto reset, lo reporto de una vez
-            if(rst_evt) begin
-                transaction = new();
-                transaction.tipo = reset;
-                transaction.tiempo = $time;
-                mon_chkr_mbx.put(transaction);
-                transaction.print("Monitor: Transaccion de reset ejecutada");
-            end
+    forever begin
+      trans_fifo #(.width(width)) transaction;
 
-            // si me llegan push y pop juntos en el mismo ciclo
-            else if(push_evt && pop_evt) begin
-                // primero mando lectura
-                transaction = new();
-                transaction.tipo = lectura;
-                transaction.dato = vif.dato_out;
-                transaction.tiempo = $time;
-                mon_chkr_mbx.put(transaction);
-                transaction.print("Monitor: Transaccion de lectura ejecutada");
+      // Espera a que el driver haya lanzado una transacción
+      drv_mon_mbx.get(transaction);
 
-                // luego mando escritura
-                transaction = new();
-                transaction.tipo = escritura;
-                transaction.dato = vif.dato_in;
-                transaction.tiempo = $time;
-                mon_chkr_mbx.put(transaction);
-                transaction.print("Monitor: Transaccion de escritura ejecutada");
-            end
+      // dato_out es combinacional (assign readData = mem[rdPtr]).
+      // El driver activa pop=1 en el flanco actual; rdPtr aún no incrementó,
+      // así que muestreamos dato_out AHORA, antes del siguiente flanco.
+      #1; // pequeño delta para dejar que las señales se propaguen
 
-            // si solo veo pop, reporto lectura
-            else if(pop_evt) begin
-                transaction = new();
-                transaction.tipo = lectura;
-                transaction.dato = vif.dato_out;
-                transaction.tiempo = $time;
-                mon_chkr_mbx.put(transaction);
-                transaction.print("Monitor: Transaccion de lectura ejecutada");
-            end
+      case (transaction.tipo)
 
-            // si solo veo push, reporto escritura
-            else if(push_evt) begin
-                transaction = new();
-                transaction.tipo = escritura;
-                transaction.dato = vif.dato_in;
-                transaction.tiempo = $time;
-                mon_chkr_mbx.put(transaction);
-                transaction.print("Monitor: Transaccion de escritura ejecutada");
-            end
-
-            // aqui guardo el estado actual para compararlo en el siguiente clk
-            push_prev = vif.push;
-            pop_prev = vif.pop;
-            rst_prev = vif.rst;
+        lectura: begin
+          // Captura el dato que el DUT presenta antes de que rdPtr avance
+          transaction.dato_pop = vif.dato_out;
+          transaction.print("Monitor: lectura observada");
         end
-    endtask
+
+        escritura: begin
+          // No hay dato de salida que capturar en escritura
+          transaction.print("Monitor: escritura observada");
+        end
+
+        lectura_escritura: begin
+          // Captura el dato leído en la operación simultánea
+          transaction.dato_pop = vif.dato_out;
+          transaction.print("Monitor: lectura y escritura observada");
+        end
+
+        reset: begin
+          transaction.print("Monitor: reset observado");
+        end
+
+        default: begin
+          $display("[%0t] Monitor ERROR: tipo de transacción inválido", $time);
+          $finish;
+        end
+
+      endcase
+
+      // Reenvía al checker con información completa
+      mon_chkr_mbx.put(transaction);
+
+    end // forever
+  endtask
+
 endclass
