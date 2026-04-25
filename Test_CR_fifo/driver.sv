@@ -29,8 +29,9 @@ class driver #(parameter width = 16);
     forever begin
       trans_fifo #(.width(width)) transaction;
 
-      // Pone las señales en reposo al inicio de cada ciclo
-      @(posedge vif.clk);
+      // Pone las señales en reposo en flanco negativo para evitar
+      // carreras con el muestreo del DUT en flanco positivo.
+      @(negedge vif.clk);
       vif.push    = 0;
       vif.pop     = 0;
       vif.rst     = 0;
@@ -48,33 +49,66 @@ class driver #(parameter width = 16);
         espera++;
       end
 
+      // Evita carreras con el DUT: se maneja en flanco negativo para que
+      // las señales queden estables antes del siguiente flanco positivo.
+      @(negedge vif.clk);
+
       // Aplica la transacción sobre la interfaz
       case (transaction.tipo)
 
         escritura: begin
-          vif.dato_in          = transaction.dato;
-          vif.push             = 1;
+          // Si no se está probando overflow, evita escribir cuando está llena.
+          if (!transaction.habilitar_overflow && vif.full) begin
+            vif.push           = 0;
+            transaction.print("Driver: escritura bloqueada (fifo llena)");
+          end else begin
+            vif.dato_in        = transaction.dato;
+            vif.push           = 1;
+          end
           transaction.tiempo   = $time;
           transaction.print("Driver: escritura aplicada");
         end
 
         lectura: begin
-          vif.pop              = 1;
+          // Si no se está probando underflow, evita leer cuando está vacía.
+          if (!transaction.habilitar_underflow && !vif.pndng) begin
+            vif.pop            = 0;
+            transaction.dato_pop = '0;
+            transaction.print("Driver: lectura bloqueada (fifo vacia)");
+          end else begin
+            // Captura el dato visible antes de que el DUT actualice el puntero de lectura.
+            transaction.dato_pop = vif.dato_out;
+            vif.pop            = 1;
+          end
           transaction.tiempo   = $time;
           transaction.print("Driver: lectura aplicada");
         end
 
         lectura_escritura: begin
-          // Push y pop en el mismo ciclo de reloj
+          // Push y pop en el mismo ciclo de reloj.
+          // Si no se prueba underflow y la fifo está vacía, degrada a solo push.
           vif.dato_in          = transaction.dato;
-          vif.push             = 1;
-          vif.pop              = 1;
+          if (!transaction.habilitar_underflow && !vif.pndng) begin
+            vif.push           = 1;
+            vif.pop            = 0;
+            transaction.dato_pop = '0;
+            transaction.print("Driver: simultanea degradada a escritura (fifo vacia)");
+          end else begin
+            // Se captura el dato leido antes del avance de puntero para verificar correctamente.
+            transaction.dato_pop = vif.dato_out;
+            vif.push           = 1;
+            vif.pop            = 1;
+          end
           transaction.tiempo   = $time;
           transaction.print("Driver: push+pop simultáneo aplicado");
         end
 
         reset: begin
           vif.rst              = 1;
+          // Mantiene reset durante un ciclo completo de reloj.
+          @(posedge vif.clk);
+          @(negedge vif.clk);
+          vif.rst              = 0;
           transaction.tiempo   = $time;
           transaction.print("Driver: reset aplicado");
         end

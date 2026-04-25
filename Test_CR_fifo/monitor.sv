@@ -3,8 +3,6 @@
 // Monitor: Observa pasivamente la interfaz del DUT y captura el resultado
 // real de cada transacción (especialmente dato_out en lecturas).
 // Luego envía la transacción completada al checker.
-// NUEVO módulo — en el diseño original esta lógica estaba mezclada
-// con el driver.
 ///////////////////////////////////////////////////////////////////////////////
 class monitor #(parameter width = 16);
   virtual fifo_if #(.width(width)) vif;
@@ -21,16 +19,12 @@ class monitor #(parameter width = 16);
       // Espera a que el driver haya lanzado una transacción
       drv_mon_mbx.get(transaction);
 
-      // dato_out es combinacional (assign readData = mem[rdPtr]).
-      // El driver activa pop=1 en el flanco actual; rdPtr aún no incrementó,
-      // así que muestreamos dato_out AHORA, antes del siguiente flanco.
-      #1; // pequeño delta para dejar que las señales se propaguen
+      #1; 
 
       case (transaction.tipo)
 
         lectura: begin
-          // Captura el dato que el DUT presenta antes de que rdPtr avance
-          transaction.dato_pop = vif.dato_out;
+          // El dato de lectura ya fue muestreado por el driver en el instante de lanzamiento.
           transaction.print("Monitor: lectura observada");
         end
 
@@ -40,8 +34,7 @@ class monitor #(parameter width = 16);
         end
 
         lectura_escritura: begin
-          // Captura el dato leído en la operación simultánea
-          transaction.dato_pop = vif.dato_out;
+          // Para simultánea, se conserva la muestra tomada por el driver.
           transaction.print("Monitor: lectura y escritura observada");
         end
 

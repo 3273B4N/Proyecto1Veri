@@ -53,6 +53,15 @@ class ambiente #(parameter width =16, parameter depth = 8);
 
   virtual task run();
     $display("[%g]  El ambiente fue inicializado",$time);
+
+    if (_if == null) begin
+      $fatal("[%0t] Ambiente ERROR: virtual interface _if no fue conectada", $time);
+    end
+
+    // Reafirma el enlace de la interfaz justo antes de arrancar los componentes.
+    driver_inst.vif  = _if;
+    monitor_inst.vif = _if;
+
     fork
       driver_inst.run();
       monitor_inst.run();

@@ -32,8 +32,14 @@ class score_board #(parameter width=16);
           case(orden)
             retardo_promedio: begin
               $display("Score Board: Recibida Orden Retardo_Promedio");
-              retardo_promedio = retardo_total/transacciones_completadas;
-              $display("[%g] Score board: el retardo promedio es: %0.3f", $time, retardo_promedio);
+              if (transacciones_completadas > 0) begin
+                // Fuerza division real para evitar truncamiento entero.
+                retardo_promedio = shortreal'(retardo_total) / shortreal'(transacciones_completadas);
+                $display("[%g] Score board: el retardo promedio es: %0.3f", $time, retardo_promedio);
+              end else begin
+                retardo_promedio = 0.0;
+                $display("[%g] Score board: no hay transacciones completadas; promedio N/A", $time);
+              end
             end
             reporte: begin
               $display("Score Board: Recibida Orden Reporte");

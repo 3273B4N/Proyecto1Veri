@@ -14,8 +14,106 @@ class trans_fifo #(parameter width = 16);
   int tiempo; //Representa el tiempo  de la simulación en el que se ejecutó la transacción 
   rand tipo_trans tipo; // lectura, escritura, lectura_escritura, reset
   int max_retardo;
+  rand int nivel_fifo;
+  int depth_cfg;
  
-  constraint const_retardo {retardo < max_retardo; retardo>0;}
+  bit habilitar_overflow;
+  bit habilitar_underflow;
+  bit habilitar_patron;
+  bit habilitar_push_pop;
+  bit habilitar_reset_random;
+
+  bit habilitar_fifo_full;
+  bit habilitar_fifo_empty;
+  bit habilitar_fifo_mid;
+
+  bit habilitar_reset_full;
+  bit habilitar_reset_empty;
+  bit habilitar_reset_mid;
+
+
+  constraint c_order {
+    solve nivel_fifo before tipo;
+  }
+
+
+  constraint const_retardo {
+    retardo > 0;
+    retardo < max_retardo;
+  }
+
+
+  constraint const_dato {
+    if (habilitar_patron) {
+      dato inside {
+        {width/4{4'h0}},
+        {width/4{4'hF}},
+        {width/4{4'hA}},
+        {width/4{4'h5}}
+      };
+    }
+  }
+
+  constraint const_rango_llenado {
+    nivel_fifo >= 0;
+    nivel_fifo <= depth_cfg;
+  }
+
+
+  constraint const_estado_dirigido {
+    if (habilitar_fifo_full)
+      nivel_fifo == depth_cfg;
+
+    else if (habilitar_fifo_empty)
+      nivel_fifo == 0;
+
+    else if (habilitar_fifo_mid)
+      nivel_fifo == (depth_cfg >> 1);
+  }
+
+  constraint const_dinamico_llenado {
+    // Si no se habilita underflow, en vacio no se permite pop
+    if (!habilitar_underflow && nivel_fifo == 0)
+      tipo inside {escritura, reset};
+
+    // Si no se habilita overflow, en lleno no se permite push
+    if (!habilitar_overflow && nivel_fifo == depth_cfg)
+      tipo inside {lectura, lectura_escritura, reset};
+  }
+
+  constraint const_tipo {
+
+    // RESET DIRIGIDO
+    if (habilitar_reset_full && nivel_fifo == depth_cfg)
+      tipo == reset;
+
+    else if (habilitar_reset_empty && nivel_fifo == 0)
+      tipo == reset;
+
+    else if (habilitar_reset_mid && nivel_fifo == (depth_cfg >> 1))
+      tipo == reset;
+
+    // RESET ALEATORIO
+    else if (habilitar_reset_random)
+      tipo dist {reset:=10, lectura:=40, escritura:=40, lectura_escritura:=10};
+
+    // PUSH + POP
+    else if (habilitar_push_pop)
+      tipo == lectura_escritura;
+
+    // OVERFLOW
+    else if (habilitar_overflow && nivel_fifo == depth_cfg)
+      tipo == escritura;
+
+    // UNDERFLOW
+    else if (habilitar_underflow && nivel_fifo == 0)
+      tipo == lectura;
+
+    // DEFAULT
+    else
+      tipo dist {lectura:=40, escritura:=40, lectura_escritura:=20};
+  }
+
 
   function new(int ret =0,bit[width-1:0] dto=0,int tmp = 0, tipo_trans tpo = lectura, int mx_rtrd = 10);
     this.retardo = ret;
@@ -24,6 +122,8 @@ class trans_fifo #(parameter width = 16);
     this.tiempo = tmp;
     this.tipo = tpo;
     this.max_retardo = mx_rtrd;
+    this.nivel_fifo = 0;
+    this.depth_cfg = 8;
   endfunction
   
   function clean;
@@ -32,6 +132,8 @@ class trans_fifo #(parameter width = 16);
     this.dato_pop = 0;
     this.tiempo = 0;
     this.tipo = lectura;
+    this.nivel_fifo = 0;
+    this.depth_cfg = 8;
     
   endfunction
     
