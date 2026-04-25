@@ -24,7 +24,11 @@ class monitor #(parameter width = 16);
       case (transaction.tipo)
 
         lectura: begin
-          // El dato de lectura ya fue muestreado por el driver en el instante de lanzamiento.
+          // Muestreo pasivo: solo captura dato_out si realmente hubo pop.
+          if (vif.pop)
+            transaction.dato_pop = vif.dato_out;
+          else
+            transaction.dato_pop = '0;
           transaction.print("Monitor: lectura observada");
         end
 
@@ -34,7 +38,11 @@ class monitor #(parameter width = 16);
         end
 
         lectura_escritura: begin
-          // Para simultánea, se conserva la muestra tomada por el driver.
+          // Muestreo pasivo para transacción simultánea.
+          if (vif.pop)
+            transaction.dato_pop = vif.dato_out;
+          else
+            transaction.dato_pop = '0;
           transaction.print("Monitor: lectura y escritura observada");
         end
 

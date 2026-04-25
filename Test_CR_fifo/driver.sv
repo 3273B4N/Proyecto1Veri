@@ -73,11 +73,8 @@ class driver #(parameter width = 16);
           // Si no se está probando underflow, evita leer cuando está vacía.
           if (!transaction.habilitar_underflow && !vif.pndng) begin
             vif.pop            = 0;
-            transaction.dato_pop = '0;
             transaction.print("Driver: lectura bloqueada (fifo vacia)");
           end else begin
-            // Captura el dato visible antes de que el DUT actualice el puntero de lectura.
-            transaction.dato_pop = vif.dato_out;
             vif.pop            = 1;
           end
           transaction.tiempo   = $time;
@@ -91,11 +88,8 @@ class driver #(parameter width = 16);
           if (!transaction.habilitar_underflow && !vif.pndng) begin
             vif.push           = 1;
             vif.pop            = 0;
-            transaction.dato_pop = '0;
             transaction.print("Driver: simultanea degradada a escritura (fifo vacia)");
           end else begin
-            // Se captura el dato leido antes del avance de puntero para verificar correctamente.
-            transaction.dato_pop = vif.dato_out;
             vif.push           = 1;
             vif.pop            = 1;
           end
