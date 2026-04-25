@@ -1,4 +1,4 @@
-PLUSARGS DISPONIBLES (Test FIFO)
+PLUSARGS 
 
 1) Flujos principales
 +run_llenado
@@ -23,8 +23,6 @@ PLUSARGS DISPONIBLES (Test FIFO)
 +habilitar_reset_empty
 +habilitar_reset_mid
 
-EJEMPLOS LISTOS PARA CORRER
-
 1) Aleatorio base
 ./salida +run_secuencia +NumeroTransacciones=40 +MaxRetardo=4
 
@@ -42,8 +40,6 @@ EJEMPLOS LISTOS PARA CORRER
 
 6) Reset aleatorio durante trafico
 ./salida +run_secuencia +habilitar_reset_random +NumeroTransacciones=40 +MaxRetardo=4
-
-REGLAS PRACTICAS
 
 1) Activar solo uno entre:
    +habilitar_fifo_full, +habilitar_fifo_empty, +habilitar_fifo_mid

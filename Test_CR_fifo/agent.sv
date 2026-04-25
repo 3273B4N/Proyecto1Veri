@@ -40,6 +40,10 @@ class agent #(parameter width = 16, parameter depth = 8);
     nivel_model = 0;
   endfunction
 
+  // esta función actualiza el nivel del modelo de la fifo para que el agente pueda 
+  // generar transacciones acordes al estado del mismo. Se actualiza con cada 
+  // transacción generada por el agente, sin embargo, no se actualiza con las transacciones que vienen 
+  //  del monitor para evitar retrasos en la generación.
   function void actualizar_nivel_model(trans_fifo #(.width(width)) t);
     case (t.tipo)
       escritura: begin
@@ -53,7 +57,7 @@ class agent #(parameter width = 16, parameter depth = 8);
       end
 
       lectura_escritura: begin
-        // Modelo alineado al checker: en vacio y simultanea se reporta underflow
+        // Modelo alineado al checker, en vacio y simultanea se reporta underflow
         // pero se agrega la escritura a la referencia.
         if (nivel_model == 0 && t.habilitar_underflow)
           nivel_model++;
@@ -70,6 +74,9 @@ class agent #(parameter width = 16, parameter depth = 8);
       nivel_model = depth;
   endfunction
 
+
+  // esta funcion se encarga de aplicar la configuración de generación a cada transacción para 
+  //evitar repetir el mismo bloque de código en cada caso de generación.
   function void apply_cfg_to_transaction(ref trans_fifo #(.width(width)) t);
     t.depth_cfg = depth;
 
@@ -97,12 +104,14 @@ class agent #(parameter width = 16, parameter depth = 8);
         $display("[%g]  Agente: se recibe instruccion",$time);
         test_agent_mbx.get(instruccion);
         case(instruccion)
+          
           llenado_aleatorio: begin
             for(int i = 0; i < num_transacciones;i++) begin
               transaccion = new;
               transaccion.max_retardo = max_retardo;
 
               apply_cfg_to_transaction(transaccion);
+
 
               if(!transaccion.randomize() with {
                 if (!(habilitar_fifo_full || habilitar_fifo_empty || habilitar_fifo_mid))

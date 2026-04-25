@@ -33,17 +33,21 @@ class trans_fifo #(parameter width = 16);
 
 
   constraint c_order {
+    //prioridad para evitar conflictos entre constraints: se resuelve primero 
+    //el nivel_fifo para luego resolver el tipo de transacción acorde al nivel resultante.
     solve nivel_fifo before tipo;
   }
 
 
   constraint const_retardo {
+    // se estable un maximo retardo
     retardo > 0;
     retardo < max_retardo;
   }
 
 
   constraint const_dato {
+    //patrones de alternancia
     if (habilitar_patron) {
       dato inside {
         {width/4{4'h0}},
@@ -61,12 +65,15 @@ class trans_fifo #(parameter width = 16);
 
 
   constraint const_estado_dirigido {
+    // nivel lleno
     if (habilitar_fifo_full)
       nivel_fifo == depth_cfg;
 
+    // nivel vacio
     else if (habilitar_fifo_empty)
       nivel_fifo == 0;
 
+    // nivel medio 
     else if (habilitar_fifo_mid)
       nivel_fifo == (depth_cfg >> 1);
   }
@@ -76,40 +83,40 @@ class trans_fifo #(parameter width = 16);
     if (!habilitar_underflow && nivel_fifo == 0)
       tipo inside {escritura, reset};
 
-    // Si no se habilita overflow, en lleno no se permite push
+    // si no se habilita overflow, en lleno no se permiten 
     if (!habilitar_overflow && nivel_fifo == depth_cfg)
       tipo inside {lectura, lectura_escritura, reset};
   }
 
   constraint const_tipo {
 
-    // RESET DIRIGIDO
+    // reset dirigido a nivel lleno
     if (habilitar_reset_full && nivel_fifo == depth_cfg)
       tipo == reset;
-
+    // reset dirigido a nivel vacio
     else if (habilitar_reset_empty && nivel_fifo == 0)
       tipo == reset;
-
+    // reset dirigido a nivel medio
     else if (habilitar_reset_mid && nivel_fifo == (depth_cfg >> 1))
       tipo == reset;
 
-    // RESET ALEATORIO
+    // reset aleatorio
     else if (habilitar_reset_random)
       tipo dist {reset:=10, lectura:=40, escritura:=40, lectura_escritura:=10};
 
-    // PUSH + POP
+    // push y pop al mismo tiempo 
     else if (habilitar_push_pop)
       tipo == lectura_escritura;
 
-    // OVERFLOW
+    // caso overflow
     else if (habilitar_overflow && nivel_fifo == depth_cfg)
       tipo == escritura;
 
-    // UNDERFLOW
+    // caso underflow
     else if (habilitar_underflow && nivel_fifo == 0)
       tipo == lectura;
 
-    // DEFAULT
+    // caso por defecto
     else
       tipo dist {lectura:=40, escritura:=40, lectura_escritura:=20};
   }

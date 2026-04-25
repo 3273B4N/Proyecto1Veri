@@ -32,6 +32,9 @@ class score_board #(parameter width=16);
           case(orden)
             retardo_promedio: begin
               $display("Score Board: Recibida Orden Retardo_Promedio");
+              // se calcula el retardo promedio a partir de las transacciones completadas. 
+              //Si no hay transacciones completadas, se reporta un promedio de 0 y se 
+              //indica que el promedio no es aplicable.
               if (transacciones_completadas > 0) begin
                 // Fuerza division real para evitar truncamiento entero.
                 retardo_promedio = shortreal'(retardo_total) / shortreal'(transacciones_completadas);
