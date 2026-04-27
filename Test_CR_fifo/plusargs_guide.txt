@@ -9,13 +9,13 @@ PLUSARGS
 2) Configuracion numerica obligatoria
 +NumeroTransacciones=<N>
 +MaxRetardo=<N>
-+TiempoLimite=<N>
-+TiempoCierre=<N>
++TiempoLimite=<N>   (nuevo)
++TiempoCierre=<N>   (nuevo)
 
 3) Configuracion obligatoria para +run_especifico
-+RetardoEspecifico=<N>
-+TipoEspecifico=<0..3>
-+DatoEspecifico=<HEX>
++RetardoEspecifico=<N>   (nuevo)
++TipoEspecifico=<0..3>   (nuevo)
++DatoEspecifico=<HEX>   (nuevo)
 (0=lectura, 1=escritura, 2=lectura_escritura, 3=reset)
 
 4) Casos de esquina
