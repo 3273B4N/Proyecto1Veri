@@ -34,6 +34,11 @@ class test #(parameter width = 16, parameter depth =8);
 
   int num_transacciones_cfg;
   int max_retardo_cfg;
+  int ret_spec_cfg;
+  int tpo_spec_cfg;
+  bit [width-1:0] dto_spec_cfg;
+  int tiempo_limite_cfg;
+  int tiempo_cierre_cfg;
    
  // Definición del ambiente de la prueba
   ambiente #(.depth(depth),.width(width)) ambiente_inst;
@@ -53,16 +58,23 @@ class test #(parameter width = 16, parameter depth =8);
     ambiente_inst.test_agent_mbx = test_agent_mbx;
     ambiente_inst.agent_inst.test_agent_mbx = test_agent_mbx;
 
-    ambiente_inst.agent_inst.num_transacciones = num_transacciones;
-    ambiente_inst.agent_inst.max_retardo = max_retardo;
+    // Configuración obligatoria por plusargs
+    if(!$value$plusargs("NumeroTransacciones=%d", num_transacciones_cfg)) begin
+      $fatal("Test ERROR: Falta plusarg obligatorio +NumeroTransacciones=<N>");
+    end
+    ambiente_inst.agent_inst.num_transacciones = num_transacciones_cfg;
 
-    // Configuración por plusargs
-    if($value$plusargs("NumeroTransacciones=%d", num_transacciones_cfg)) begin
-      ambiente_inst.agent_inst.num_transacciones = num_transacciones_cfg;
+    if(!$value$plusargs("MaxRetardo=%d", max_retardo_cfg)) begin
+      $fatal("Test ERROR: Falta plusarg obligatorio +MaxRetardo=<N>");
+    end
+    ambiente_inst.agent_inst.max_retardo = max_retardo_cfg;
+
+    if(!$value$plusargs("TiempoLimite=%d", tiempo_limite_cfg)) begin
+      $fatal("Test ERROR: Falta plusarg obligatorio +TiempoLimite=<N>");
     end
 
-    if($value$plusargs("MaxRetardo=%d", max_retardo_cfg)) begin
-      ambiente_inst.agent_inst.max_retardo = max_retardo_cfg;
+    if(!$value$plusargs("TiempoCierre=%d", tiempo_cierre_cfg)) begin
+      $fatal("Test ERROR: Falta plusarg obligatorio +TiempoCierre=<N>");
     end
 
     //Casos principales
@@ -70,6 +82,24 @@ class test #(parameter width = 16, parameter depth =8);
     run_aleatorio = $test$plusargs("run_aleatorio");
     run_especifico = $test$plusargs("run_especifico");
     run_secuencia = $test$plusargs("run_secuencia");
+
+    if(run_especifico) begin
+      if(!$value$plusargs("RetardoEspecifico=%d", ret_spec_cfg)) begin
+        $fatal("Test ERROR: +run_especifico requiere +RetardoEspecifico=<N>");
+      end
+
+      if(!$value$plusargs("TipoEspecifico=%d", tpo_spec_cfg)) begin
+        $fatal("Test ERROR: +run_especifico requiere +TipoEspecifico=<0..3>");
+      end
+
+      if((tpo_spec_cfg < lectura) || (tpo_spec_cfg > reset)) begin
+        $fatal("Test ERROR: +TipoEspecifico fuera de rango. Use 0=lectura, 1=escritura, 2=lectura_escritura, 3=reset");
+      end
+
+      if(!$value$plusargs("DatoEspecifico=%h", dto_spec_cfg)) begin
+        $fatal("Test ERROR: +run_especifico requiere +DatoEspecifico=<HEX>");
+      end
+    end
 
     // Casos esquina
     habilitar_overflow = $test$plusargs("habilitar_overflow");
@@ -123,9 +153,9 @@ class test #(parameter width = 16, parameter depth =8);
     end
 
     if(run_especifico) begin
-      ambiente_inst.agent_inst.ret_spec = 3;
-      ambiente_inst.agent_inst.tpo_spec = escritura;
-      ambiente_inst.agent_inst.dto_spec = {width/4{4'h5}};
+      ambiente_inst.agent_inst.ret_spec = ret_spec_cfg;
+      ambiente_inst.agent_inst.tpo_spec = tipo_trans'(tpo_spec_cfg);
+      ambiente_inst.agent_inst.dto_spec = dto_spec_cfg;
       instr_agent = trans_especifica;
       test_agent_mbx.put(instr_agent);
       $display("[%g]  Test: Enviada la tercera instruccion al agente transaccion_específica",$time);
@@ -138,18 +168,16 @@ class test #(parameter width = 16, parameter depth =8);
     end 
 
     if(!(run_llenado || run_aleatorio || run_especifico || run_secuencia)) begin
-      $display("[%g]  Test: No se seleccionó ningún caso principal, enviando secuencia por defecto de transacciones aleatorias",$time);
-      instr_agent = trans_aleatoria;
-      test_agent_mbx.put(instr_agent);
+      $fatal("[%g]  Test ERROR: No se seleccionó ningún caso principal. Use +run_llenado, +run_aleatorio, +run_especifico o +run_secuencia",$time);
     end
 
-    #10000
+    #(tiempo_limite_cfg)
     $display("[%g]  Test: Se alcanza el tiempo límite de la prueba",$time);
     instr_sb = retardo_promedio;
     test_sb_mbx.put(instr_sb);
     instr_sb = reporte;
     test_sb_mbx.put(instr_sb);
-    #20
+    #(tiempo_cierre_cfg)
     $finish;
   endtask
 endclass
