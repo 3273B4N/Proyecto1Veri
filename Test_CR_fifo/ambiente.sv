@@ -13,15 +13,7 @@ class ambiente #(parameter width =16, parameter depth = 8);
   // Declaración de la interface que conecta el DUT 
   virtual fifo_if  #(.width(width)) _if;
 
-  //declaración de los mailboxes
- // trans_fifo_mbx agnt_drv_mbx;           //mailbox del agente al driver
-  //trans_fifo_mbx drv_mon_mbx;            //mailbox del driver al monitor
- // trans_fifo_mbx mon_chkr_mbx;           //mailbox del monitor al checker
-  //trans_sb_mbx chkr_sb_mbx;              //mailbox del checker al scoreboard
-  //comando_test_sb_mbx test_sb_mbx;       //mailbox del test al scoreboard
- // comando_test_agent_mbx test_agent_mbx; //mailbox del test al agente
-
- // mailboxes parametrizados
+ // declaracion de los mailboxes parametrizados
   mailbox #(trans_fifo #(width)) agnt_drv_mbx;
   mailbox #(trans_fifo #(width)) drv_mon_mbx;
   mailbox #(trans_fifo #(width)) mon_chkr_mbx;

@@ -8,7 +8,6 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 class agent #(parameter width = 16, parameter depth = 8);
-  //trans_fifo_mbx agnt_drv_mbx;  
   mailbox #(trans_fifo #(width)) agnt_drv_mbx; // se declara parametricamente         
   comando_test_agent_mbx test_agent_mbx; 
   int num_transacciones;                 

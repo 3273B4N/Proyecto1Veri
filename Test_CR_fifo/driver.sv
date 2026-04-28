@@ -12,8 +12,8 @@ class driver #(parameter width = 16);
 
   //trans_fifo_mbx agnt_drv_mbx;  // Recibe transacciones del agente
  // trans_fifo_mbx drv_mon_mbx;   // Envía transacciones ejecutadas al monitor
-  mailbox #(trans_fifo #(width)) agnt_drv_mbx; // se declaran parametricamente
-  mailbox #(trans_fifo #(width)) drv_mon_mbx;
+  mailbox #(trans_fifo #(width)) agnt_drv_mbx; // Recibe transacciones del agente se declaran parametricamente
+  mailbox #(trans_fifo #(width)) drv_mon_mbx; // Envía transacciones ejecutadas al monitor
   int espera;
 
   task run();

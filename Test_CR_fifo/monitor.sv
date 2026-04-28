@@ -6,11 +6,9 @@
 ///////////////////////////////////////////////////////////////////////////////
 class monitor #(parameter width = 16);
   virtual fifo_if #(.width(width)) vif;
-
-  //trans_fifo_mbx drv_mon_mbx;   // Recibe transacciones despachadas por el driver
-  //trans_fifo_mbx mon_chkr_mbx;  // Envía transacciones observadas al checker
-  mailbox #(trans_fifo #(width)) drv_mon_mbx;
-  mailbox #(trans_fifo #(width)) mon_chkr_mbx; // se declaran parametricamente
+  
+  mailbox #(trans_fifo #(width)) drv_mon_mbx; // Recibe transacciones despachadas por el driver se declaran parametricamente
+  mailbox #(trans_fifo #(width)) mon_chkr_mbx; 
   task run();
     $display("[%0t]  Monitor: inicializado", $time);
 

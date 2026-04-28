@@ -92,7 +92,7 @@ class trans_fifo #(parameter width = 16);
 
     // reset dirigido a nivel lleno
     if (habilitar_reset_full && nivel_fifo == depth_cfg)
-      tipo == reset;
+      tipo == reset; 
     // reset dirigido a nivel vacio
     else if (habilitar_reset_empty && nivel_fifo == 0)
       tipo == reset;

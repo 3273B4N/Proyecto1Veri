@@ -2,14 +2,12 @@
 // Scoreboard: Este objeto se encarga de llevar un estado del comportamiento de la prueba y es capa de generar reportes //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class score_board #(parameter width=16);
-  //trans_sb_mbx  chkr_sb_mbx;
   mailbox #(trans_sb #(width)) chkr_sb_mbx; // se decalara parametricamente
   comando_test_sb_mbx test_sb_mbx;
   trans_sb #(.width(width))transaccion_entrante; 
-  trans_sb scoreboard[$]; // esta es la estructura dinámica que maneja el scoreboard  
-  //trans_sb auxiliar_array[$]; // estructura auxiliar usada para explorar el scoreboard;  
-  //trans_sb auxiliar_trans;
-  trans_sb #(width) auxiliar_array[$];
+
+  trans_sb #(width) scoreboard[$]; // esta es la estructura dinámica que maneja el scoreboard  declarada parametricamente
+  trans_sb #(width) auxiliar_array[$]; // estructura auxiliar usada para explorar el scoreboard declarada parametricamente
   trans_sb #(width) auxiliar_trans;
   shortreal retardo_promedio;
   solicitud_sb orden;

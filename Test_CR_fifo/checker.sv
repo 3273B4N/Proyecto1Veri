@@ -6,11 +6,9 @@ class checker_c #(parameter width=16, parameter depth =8);
   trans_fifo #(.width(width)) transaccion; //transacción recibida en el mailbox 
   trans_fifo #(.width(width)) auxiliar; //transacción usada como auxiliar para leer el fifo emulado 
   trans_sb   #(.width(width)) to_sb; // transacción usada para comunicarse con el scoreboard
-  trans_fifo  emul_fifo[$]; //this queue is going to be used as golden reference for the fifo
-  //trans_fifo_mbx drv_chkr_mbx; // Este mailbox es el que comunica con el driver/monitor
-  //trans_sb_mbx  chkr_sb_mbx; // Este mailbox es el que comunica el checker con el scoreboard
-  mailbox #(trans_fifo #(width)) drv_chkr_mbx; // se declaran parametricamente
-  mailbox #(trans_sb   #(width)) chkr_sb_mbx;
+  trans_fifo #(width) emul_fifo[$];
+  mailbox #(trans_fifo #(width)) drv_chkr_mbx; // //this queue is going to be used as golden reference for the fifo se declaran parametricamente
+  mailbox #(trans_sb   #(width)) chkr_sb_mbx; // Este mailbox es el que comunica el checker con el scoreboard
   int contador_auxiliar; 
 
   function new();
