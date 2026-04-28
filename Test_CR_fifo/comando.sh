@@ -19,7 +19,7 @@ vcs -Mupdate test_bench.sv -o salida -full64 -sverilog -kdb -debug_acc+all -debu
 
 #vcs -Mupdate test_simple_fifo.sv -o salida  -full64 -sverilog  -kdb -lca -debug_acc+all -debug_region+cell+encrypt -l log_test +lint=TFIPC-L -cm line+tgl+cond+fsm+branch+assert 
 
-./salida +RUN_ALL=1 # +ESCENARIO=provocar_overflow #este es el plusarg para seleccionar el escenario
+./salida -f plusargs.txt # de aca se jalan los plusargs, se modifican en plusargs.txt 
 
 #./salida -cm line+tgl+cond+fsm+branch+assert; #Aca se ponen los plusargs tira el ejecutable se va a usar cuando se tenga cobertura
 
