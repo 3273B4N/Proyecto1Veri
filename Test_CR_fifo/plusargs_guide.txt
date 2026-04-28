@@ -1,0 +1,61 @@
+PLUSARGS 
+
+1) Flujos principales
++run_llenado
++run_aleatorio
++run_especifico
++run_secuencia
+
+2) Configuracion numerica obligatoria
++NumeroTransacciones=<N>
++MaxRetardo=<N>
++TiempoLimite=<N>   (nuevo)
++TiempoCierre=<N>   (nuevo)
+
+3) Configuracion obligatoria para +run_especifico
++RetardoEspecifico=<N>   (nuevo)
++TipoEspecifico=<0..3>   (nuevo)
++DatoEspecifico=<HEX>   (nuevo)
+(0=lectura, 1=escritura, 2=lectura_escritura, 3=reset)
+
+4) Casos de esquina
++habilitar_overflow
++habilitar_underflow
++habilitar_patron
++habilitar_push_pop
++habilitar_reset_random
++habilitar_fifo_full
++habilitar_fifo_empty
++habilitar_fifo_mid
++habilitar_reset_full
++habilitar_reset_empty
++habilitar_reset_mid
+
+1) Aleatorio base
+./salida +run_secuencia +NumeroTransacciones=40 +MaxRetardo=4 +TiempoLimite=10000 +TiempoCierre=20
+
+2) Push/pop simultaneo
+./salida +run_secuencia +habilitar_push_pop +NumeroTransacciones=40 +MaxRetardo=4 +TiempoLimite=10000 +TiempoCierre=20
+
+3) Overflow dirigido
+./salida +run_secuencia +habilitar_overflow +habilitar_fifo_full +NumeroTransacciones=40 +MaxRetardo=4 +TiempoLimite=10000 +TiempoCierre=20
+
+4) Underflow dirigido
+./salida +run_secuencia +habilitar_underflow +habilitar_fifo_empty +NumeroTransacciones=40 +MaxRetardo=4 +TiempoLimite=10000 +TiempoCierre=20
+
+5) Patron 0/5/A/F
+./salida +run_secuencia +habilitar_patron +NumeroTransacciones=40 +MaxRetardo=4 +TiempoLimite=10000 +TiempoCierre=20
+
+6) Reset aleatorio durante trafico
+./salida +run_secuencia +habilitar_reset_random +NumeroTransacciones=40 +MaxRetardo=4 +TiempoLimite=10000 +TiempoCierre=20
+
+7) Transaccion especifica
+./salida +run_especifico +NumeroTransacciones=10 +MaxRetardo=4 +TiempoLimite=10000 +TiempoCierre=20 +RetardoEspecifico=3 +TipoEspecifico=1 +DatoEspecifico=5555
+
+1) Activar solo uno entre:
+   +habilitar_fifo_full, +habilitar_fifo_empty, +habilitar_fifo_mid
+
+2) Activar solo uno entre:
+   +habilitar_reset_full, +habilitar_reset_empty, +habilitar_reset_mid
+
+3) Para trafico normal, no activar plusargs de reset.

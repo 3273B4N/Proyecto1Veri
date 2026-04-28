@@ -2,7 +2,8 @@
 // Scoreboard: Este objeto se encarga de llevar un estado del comportamiento de la prueba y es capa de generar reportes //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class score_board #(parameter width=16);
-  trans_sb_mbx  chkr_sb_mbx;
+  //trans_sb_mbx  chkr_sb_mbx;
+  mailbox #(trans_sb #(width)) chkr_sb_mbx; // se decalara parametricamente
   comando_test_sb_mbx test_sb_mbx;
   trans_sb #(.width(width))transaccion_entrante; 
   trans_sb scoreboard[$]; // esta es la estructura dinámica que maneja el scoreboard  
@@ -32,8 +33,17 @@ class score_board #(parameter width=16);
           case(orden)
             retardo_promedio: begin
               $display("Score Board: Recibida Orden Retardo_Promedio");
-              retardo_promedio = retardo_total/transacciones_completadas;
-              $display("[%g] Score board: el retardo promedio es: %0.3f", $time, retardo_promedio);
+              // se calcula el retardo promedio a partir de las transacciones completadas. 
+              //Si no hay transacciones completadas, se reporta un promedio de 0 y se 
+              //indica que el promedio no es aplicable.
+              if (transacciones_completadas > 0) begin
+                // Fuerza division real para evitar truncamiento entero.
+                retardo_promedio = shortreal'(retardo_total) / shortreal'(transacciones_completadas);
+                $display("[%g] Score board: el retardo promedio es: %0.3f", $time, retardo_promedio);
+              end else begin
+                retardo_promedio = 0.0;
+                $display("[%g] Score board: no hay transacciones completadas; promedio N/A", $time);
+              end
             end
             reporte: begin
               $display("Score Board: Recibida Orden Reporte");
