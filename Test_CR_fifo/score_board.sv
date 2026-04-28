@@ -7,8 +7,10 @@ class score_board #(parameter width=16);
   comando_test_sb_mbx test_sb_mbx;
   trans_sb #(.width(width))transaccion_entrante; 
   trans_sb scoreboard[$]; // esta es la estructura dinámica que maneja el scoreboard  
-  trans_sb auxiliar_array[$]; // estructura auxiliar usada para explorar el scoreboard;  
-  trans_sb auxiliar_trans;
+  //trans_sb auxiliar_array[$]; // estructura auxiliar usada para explorar el scoreboard;  
+  //trans_sb auxiliar_trans;
+  trans_sb #(width) auxiliar_array[$];
+  trans_sb #(width) auxiliar_trans;
   shortreal retardo_promedio;
   solicitud_sb orden;
   int tamano_sb = 0;

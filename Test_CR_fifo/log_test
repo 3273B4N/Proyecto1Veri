@@ -1,0 +1,180 @@
+Command: vcs -Mupdate test_bench.sv -o salida -full64 -sverilog -kdb -debug_acc+all \
+-debug_region+cell+encrypt -l log_test +lint=TFIPC-L -pvalue+test_bench.depth=228 \
+-pvalue+test_bench.width=61 -P /mnt/vol_NFS_rh003/tools/verdi/R-2020.12-SP2/share/PLI/VCS/linux64/verdi.tab \
+
+                         Chronologic VCS (TM)
+       Version R-2020.12-SP2_Full64 -- Mon Apr 27 18:45:23 2026
+
+                    Copyright (c) 1991 - 2021 Synopsys, Inc.
+   This software and the associated documentation are proprietary to Synopsys,
+ Inc. This software may only be used in accordance with the terms and conditions
+ of a written license agreement with Synopsys, Inc. All other use, reproduction,
+            or distribution of this software is strictly prohibited.
+
+Parsing design file 'test_bench.sv'
+Parsing included file 'fifo.sv'.
+Back to file 'test_bench.sv'.
+Parsing included file 'interface_transactions.sv'.
+Back to file 'test_bench.sv'.
+Parsing included file 'driver.sv'.
+Back to file 'test_bench.sv'.
+Parsing included file 'monitor.sv'.
+Back to file 'test_bench.sv'.
+Parsing included file 'checker.sv'.
+Back to file 'test_bench.sv'.
+Parsing included file 'score_board.sv'.
+Back to file 'test_bench.sv'.
+Parsing included file 'agent.sv'.
+Back to file 'test_bench.sv'.
+Parsing included file 'ambiente.sv'.
+Back to file 'test_bench.sv'.
+Parsing included file 'test.sv'.
+Back to file 'test_bench.sv'.
+Top Level Modules:
+       prll_d_ltch_no_rst
+       prll_d_ltch
+       fifo_flops
+       test_bench
+assign 228 test_bench.depth (Command line)
+assign 61 test_bench.width (Command line)
+TimeScale is 1 ns / 1 ps
+
+Error-[SV-ICA] Illegal class assignment
+checker.sv, 32
+"this.auxiliar = this.emul_fifo.pop_front;"
+  Expression 'this.emul_fifo.pop_front' on rhs is not a class or a compatible 
+  class and hence cannot be assigned to a class handle on lhs.
+  Source type: class $unit::trans_fifo#(16)
+  Target type: class $unit::trans_fifo#(61)
+  Please make sure that the lhs and rhs expressions are compatible.
+  Instance stack trace:
+      checker_c#(61,228)  ambiente.sv, 9
+      ambiente#(61,228)  test.sv, 44
+      test#(61,228)  test_bench.sv, 19
+      test_bench  test_bench.sv, 15
+  
+
+
+Error-[SV-ICA] Illegal class assignment
+checker.sv, 55
+"this.auxiliar = this.emul_fifo.pop_front;"
+  Expression 'this.emul_fifo.pop_front' on rhs is not a class or a compatible 
+  class and hence cannot be assigned to a class handle on lhs.
+  Source type: class $unit::trans_fifo#(16)
+  Target type: class $unit::trans_fifo#(61)
+  Please make sure that the lhs and rhs expressions are compatible.
+  Instance stack trace:
+      checker_c#(61,228)  ambiente.sv, 9
+      ambiente#(61,228)  test.sv, 44
+      test#(61,228)  test_bench.sv, 19
+      test_bench  test_bench.sv, 15
+  
+
+
+Error-[SV-QPOF] Queue push operation failed
+checker.sv, 75
+"this.transaccion"
+  The element 'this.transaccion' being pushed on the queue 'this.emul_fifo' is
+  not compatible with the type of the queue.
+  Source type: class $unit::trans_fifo#(61)
+  Target type: class $unit::trans_fifo#(16)
+
+
+Error-[SV-ICA] Illegal class assignment
+checker.sv, 79
+"this.auxiliar = this.emul_fifo.pop_front;"
+  Expression 'this.emul_fifo.pop_front' on rhs is not a class or a compatible 
+  class and hence cannot be assigned to a class handle on lhs.
+  Source type: class $unit::trans_fifo#(16)
+  Target type: class $unit::trans_fifo#(61)
+  Please make sure that the lhs and rhs expressions are compatible.
+  Instance stack trace:
+      checker_c#(61,228)  ambiente.sv, 9
+      ambiente#(61,228)  test.sv, 44
+      test#(61,228)  test_bench.sv, 19
+      test_bench  test_bench.sv, 15
+  
+
+
+Error-[SV-QPOF] Queue push operation failed
+checker.sv, 85
+"this.transaccion"
+  The element 'this.transaccion' being pushed on the queue 'this.emul_fifo' is
+  not compatible with the type of the queue.
+  Source type: class $unit::trans_fifo#(61)
+  Target type: class $unit::trans_fifo#(16)
+
+
+Error-[SV-QPOF] Queue push operation failed
+checker.sv, 88
+"this.transaccion"
+  The element 'this.transaccion' being pushed on the queue 'this.emul_fifo' is
+  not compatible with the type of the queue.
+  Source type: class $unit::trans_fifo#(61)
+  Target type: class $unit::trans_fifo#(16)
+
+
+Error-[SV-ICA] Illegal class assignment
+checker.sv, 94
+"this.auxiliar = this.emul_fifo.pop_front;"
+  Expression 'this.emul_fifo.pop_front' on rhs is not a class or a compatible 
+  class and hence cannot be assigned to a class handle on lhs.
+  Source type: class $unit::trans_fifo#(16)
+  Target type: class $unit::trans_fifo#(61)
+  Please make sure that the lhs and rhs expressions are compatible.
+  Instance stack trace:
+      checker_c#(61,228)  ambiente.sv, 9
+      ambiente#(61,228)  test.sv, 44
+      test#(61,228)  test_bench.sv, 19
+      test_bench  test_bench.sv, 15
+  
+
+
+Error-[SV-QPOF] Queue push operation failed
+score_board.sv, 31
+"this.transaccion_entrante"
+  The element 'this.transaccion_entrante' being pushed on the queue 
+  'this.scoreboard' is not compatible with the type of the queue.
+  Source type: class $unit::trans_sb#(61)
+  Target type: class $unit::trans_sb#(16)
+
+
+Error-[SV-ICA] Illegal class assignment
+score_board.sv, 54
+"this.auxiliar_trans = this.scoreboard.pop_front;"
+  Expression 'this.scoreboard.pop_front' on rhs is not a class or a compatible
+  class and hence cannot be assigned to a class handle on lhs.
+  Source type: class $unit::trans_sb#(16)
+  Target type: class $unit::trans_sb#(61)
+  Please make sure that the lhs and rhs expressions are compatible.
+  Instance stack trace:
+      score_board#(61)  ambiente.sv, 10
+      ambiente#(61,228)  test.sv, 44
+      test#(61,228)  test_bench.sv, 19
+      test_bench  test_bench.sv, 15
+  
+
+
+Error-[ICTA] Incompatible complex type
+score_board.sv, 58
+  Incompatible complex type assignment
+  Type of source expression is incompatible with type of target expression. 
+  Mismatching types cannot be used in assignments, initializations and 
+  instantiations. The type of the target is 'class $unit::trans_sb#(16)$[$]', 
+  while the type of the source is 'class $unit::trans_sb#(61)$[$]'.
+  Source Expression: this.auxiliar_array
+  Instance stack trace:
+      score_board#(61)  ambiente.sv, 10
+      ambiente#(61,228)  test.sv, 44
+      test#(61,228)  test_bench.sv, 19
+      test_bench  test_bench.sv, 15
+  
+
+
+Note-[MAX_ERROR_COUNT] Maximum error count reached
+  Current number of errors has reached the default maximum error count (10).
+  Please use +error+<count> to increase the limit.
+
+10 errors
+CPU time: .961 seconds to compile
+Verdi KDB elaboration done and the database successfully generated: 0 error(s), 0 warning(s)
