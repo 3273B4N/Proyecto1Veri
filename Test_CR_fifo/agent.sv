@@ -179,23 +179,45 @@ class agent #(parameter width = 16, parameter depth = 8);
           end
 
           trans_especifica: begin
-            transaccion = new;
-            transaccion.max_retardo = max_retardo;
+            for(int i=0; i<num_transacciones; i++) begin
+              transaccion = new;
+              transaccion.max_retardo = max_retardo;
 
-            apply_cfg_to_transaction(transaccion);
+              apply_cfg_to_transaction(transaccion);
 
-            if(!transaccion.randomize() with {
-              if (!(habilitar_fifo_full || habilitar_fifo_empty || habilitar_fifo_mid))
-                nivel_fifo == nivel_model;
-              tipo == tpo_spec;
-              dato == dto_spec;
-              retardo == ret_spec;
-            })
-              $fatal("[%g] Agente ERROR: no se pudo randomizar la transacción específica", $time);
+              // Evita contradiccion de constraints para lectura/lectura_escritura
+              // en vacio cuando underflow esta deshabilitado.
+              if (((tpo_spec == lectura_escritura) || (tpo_spec == lectura)) && !habilitar_underflow && (nivel_model == 0)) begin
+                transaccion.habilitar_push_pop = 0;
+                if(!transaccion.randomize() with {
+                  if (!(habilitar_fifo_full || habilitar_fifo_empty || habilitar_fifo_mid))
+                    nivel_fifo == nivel_model;
+                  tipo == escritura;
+                })
+                  $fatal("[%g] Agente ERROR: no se pudo randomizar la escritura de siembra", $time);
 
-            transaccion.print("Agente: transacción creada");
-            agnt_drv_mbx.put(transaccion);
-            actualizar_nivel_model(transaccion);
+                transaccion.print("Agente: transacción de siembra creada");
+                agnt_drv_mbx.put(transaccion);
+                actualizar_nivel_model(transaccion);
+
+                transaccion = new;
+                transaccion.max_retardo = max_retardo;
+                apply_cfg_to_transaction(transaccion);
+              end
+
+              if(!transaccion.randomize() with {
+                if (!(habilitar_fifo_full || habilitar_fifo_empty || habilitar_fifo_mid))
+                  nivel_fifo == nivel_model;
+                tipo == tpo_spec;
+                dato == dto_spec;
+                retardo == ret_spec;
+              })
+                $fatal("[%g] Agente ERROR: no se pudo randomizar la transacción específica", $time);
+
+              transaccion.print("Agente: transacción creada");
+              agnt_drv_mbx.put(transaccion);
+              actualizar_nivel_model(transaccion);
+            end
           end
 
           sec_trans_aleatorias: begin
