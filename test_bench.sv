@@ -50,8 +50,8 @@ module test_bench;
     clk = 0;
     t0 = new();
     t0._if = _if;
+    t0.ambiente_inst._if = _if;
     t0.ambiente_inst.driver_inst.vif = _if;
-    t0.ambiente_inst.monitor_inst.vif = _if;
     fork
       t0.run();
     join_none
