@@ -3,11 +3,11 @@
 // Descomentar el escenario deseado, comentar los demas, se pueden combinar segun el caso deseado, se ponen algunos que se pedian en el testplan
 
 // 1) Secuencia aleatoria base
-//+run_secuencia
-//+NumeroTransacciones=40
-//+MaxRetardo=4
-//+TiempoLimite=10000
-//+TiempoCierre=20
++run_secuencia
++NumeroTransacciones=40
++MaxRetardo=4
++TiempoLimite=10000
++TiempoCierre=20
 
 // 2) Llenado y vaciado
 //+run_llenado
@@ -133,10 +133,10 @@
 //+TiempoCierre=20
 
 // 15) Reset con FIFO llena
-+run_secuencia
-+habilitar_reset_full
+//+run_secuencia
+//+habilitar_reset_full
 //+habilitar_fifo_full
-+NumeroTransacciones=40
-+MaxRetardo=4
-+TiempoLimite=10000
-+TiempoCierre=20
+//+NumeroTransacciones=40
+//+MaxRetardo=4
+//+TiempoLimite=10000
+//+TiempoCierre=20
