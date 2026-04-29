@@ -13,14 +13,7 @@ rm -rfv `ls |grep -v ".*\.sv\|.*\.sh\|plusargs\.txt"` # ese comando destruye tod
 #vcs -Mupdate test_bench.sv -o salida -full64 -sverilog -kdb -debug_acc+all -debug_region+cell+encrypt -l log_test +lint=TFIPC-L -pvalue+test_bench.depth=$DEPTH -pvalue+test_bench.width=$WIDTH -P ${VERDI_HOME}/share/PLI/VCS/linux64/verdi.tab 
 
 
-#vcs -Mupdate test_bench.sv  -o salida  -full64 -sverilog  -kdb -debug_acc+all -debug_region+cell+encrypt -l log_test +lint=TFIPC-L  -P ${VERDI_HOME}/share/PLI/VCS/linux64/verdi.tab # ;;; este comando compila el tb y el dut de forma regular
-
-#vcs -Mupdate test_bench.sv  -o salida  -full64 -sverilog  -kdb -lca -debug_acc+all -debug_region+cell+encrypt -l log_test +lint=TFIPC-L -cm line+tgl+cond+fsm+branch+assert 
-
-#vcs -Mupdate test_simple_fifo.sv -o salida  -full64 -sverilog  -kdb -lca -debug_acc+all -debug_region+cell+encrypt -l log_test +lint=TFIPC-L -cm line+tgl+cond+fsm+branch+assert 
-
 #./salida -f plusargs.txt # de aca se jalan los plusargs, se modifican en plusargs.txt 
 
-#./salida -cm line+tgl+cond+fsm+branch+assert; #Aca se ponen los plusargs tira el ejecutable se va a usar cuando se tenga cobertura
 
-#verdi -cov -covdir salida.vdb& # ; este comando se usa para abrir el archivo que tiene la cobertura 
+#verdi -cov -covdir salida.vdb& # ; este comando se usa para abrir el archivo que tiene la cobertura, no se usa en este proyecto
